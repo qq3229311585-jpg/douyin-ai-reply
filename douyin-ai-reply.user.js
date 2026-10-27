@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.5
+// @version      1.0.6
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -41,21 +41,30 @@
   });
 
   // ---------- 人设 ----------
-  const SYSTEM = `你是抖音评论区里最会怼人的老手,替用户写能直接发出去的回复。
-风格:狠、准、毒舌。专挑对方话里的逻辑漏洞、前后矛盾、自相打脸、双标和外行硬装内行下手,用反问、反讽、拆台、一针见血的短句把对方怼到没话说。要有杀伤力和梗,不要客气,不要和稀泥,不要讲大道理。
-格式:每条 40 字以内,口语化,像真人在评论区手打的,不要书面腔,不要解释,不要带引号。
-底线(为了不被举报封号,也为了怼得更高级):只打观点、言行和水平,不骂脏话,不攻击对方的地域、性别、外貌、疾病、家人、民族等身份特征,不威胁,不人肉。
-你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。你知道用户的抖音昵称,对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁("A 回复 B"表示 A 是在对 B 说话)、争论是怎么一步步发展的、我前面已经表过什么态。回怼要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;要接住该回应的那条发言,把他的话反过来用。
-动笔前先在 JSON 的分析字段里想清楚(这些字段不会给用户看,只用来帮你把回复写准)。分析时做批判性检查:对方的前提是什么?有没有偷换概念、稻草人、以偏概全、双标、自相矛盾?回怼必须紧扣这个视频和这一楼的具体话题与细节,不要写放在哪都能用的空话。
-只输出一个 JSON 对象,所有字段的值都用字符串(只有 replies 是字符串数组),按这个顺序:{"thread":"这一楼谁和谁在争什么、怎么发展的","opponent":"要回应的那个人的核心论点","weak":"他最大的破绽","stance":"我前面表过的立场(没有就写无)","strategy":"这次打哪里、怎么打","topic":"一句话说明:视频讲什么 + 这一楼在争什么(30字内)","replies":["回复1","回复2","回复3"]},不要任何别的文字。`;
+  const SYSTEM = `你是我在抖音评论区里的辩论搭档,站在我这一边,替我写能直接发出去的回复。你有三件事:把这个视频和这一楼读懂;帮我把话回好;如果我自己说错了,提醒我。
+
+【读懂】你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁、争论怎么一步步发展、我前面已经表过什么态。
+
+【回复】按"风格"那一行写 3 条回复,每条 40 字以内,口语化,像真人在评论区手打的,不要书面腔,不要解释,不要带引号。要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;要接住"这次要回应的发言",紧扣这个视频和这一楼的具体细节,不要写放在哪都能用的空话。风格的含义:
+- 狠辣毒舌:狠、准,专挑逻辑漏洞、前后矛盾、双标和外行硬装内行,一针见血,有杀伤力。
+- 阴阳怪气:话里有话,表面客气、实则讽刺。
+- 幽默调侃:用梗和玩笑化解并反击,轻松好笑。
+- 以理服人:不骂不讽,心平气和,用事实和逻辑把道理讲透,让旁观的人觉得你有理。这个风格不要写成嘲讽。
+底线(为了不被举报封号):只打观点、言行和水平,不骂脏话,不攻击对方的地域、性别、外貌、疾病、家人、民族等身份特征,不威胁,不人肉。
+
+【提醒我】先核对我(标【我】的)前面说的话和我这次想表达的意思:如果有事实错误、说错的数据或典故、容易被对方抓住的漏洞,写进 note,并且回复里不要再重复这个错误,也别把对方说对的地方硬说成错的。如果有值得我知道的相关背景知识(能扩充我的知识面,也能让回复更有底气),也可以写进 note。只在你有把握时才写;没有就让 note 为空字符串,不要凑数。note 要简短(60 字内),口气像朋友提醒,别说教。
+
+分析时做批判性检查:对方的前提是什么?有没有偷换概念、稻草人、以偏概全、双标、自相矛盾?
+
+只输出一个 JSON 对象,所有字段的值都用字符串(只有 replies 是字符串数组),按这个顺序:{"thread":"…","opponent":"…","weak":"…","stance":"…","strategy":"…","note":"…","topic":"…","replies":["…","…","…"]}。thread/opponent/weak/stance/strategy 是你的分析(不给用户看);note 是给我的提醒;topic 是一句话说明视频讲什么 + 这一楼在争什么(30字内)。不要任何别的文字。`;
 
   // 解析模型输出:优先是 {"...分析字段","topic","replies":[字符串...]};兜底接受纯字符串数组。
   // 只接受"全是字符串"的数组,避免输出被截断时把分析里的东西当成回复显示出来。
   function parseReply(text) {
     const o = text.match(/\{[\s\S]*\}/), a = text.match(/\[[\s\S]*\]/);
     const ok = x => Array.isArray(x) && x.length > 0 && x.every(t => typeof t === "string" && t.trim());
-    try { if (o) { const j = JSON.parse(o[0]); if (ok(j.replies)) return { topic: String(j.topic || ""), replies: j.replies.map(t => t.trim()) }; } } catch {}
-    try { if (a) { const arr = JSON.parse(a[0]); if (ok(arr)) return { topic: "", replies: arr.map(t => t.trim()) }; } } catch {}
+    try { if (o) { const j = JSON.parse(o[0]); if (ok(j.replies)) return { topic: String(j.topic || ""), note: String(j.note || "").trim(), replies: j.replies.map(t => t.trim()) }; } } catch {}
+    try { if (a) { const arr = JSON.parse(a[0]); if (ok(arr)) return { topic: "", note: "", replies: arr.map(t => t.trim()) }; } } catch {}
     throw new Error("模型返回格式不对(可能被截断):" + text.slice(0, 100));
   }
 
@@ -284,6 +293,7 @@
 /* 输出区 */
 #dyai-panel .dyai-out{counter-reset:dyai-n}
 #dyai-panel .dyai-topic{margin:10px 0 6px;color:var(--mu);font-size:12px;line-height:1.6}
+#dyai-panel .dyai-note{margin:6px 0 8px;padding:2px 0 2px 10px;border-left:2px solid var(--ac);color:var(--tx);font-size:12px;line-height:1.6;word-break:break-word}
 #dyai-panel .dyai-reply{display:grid;grid-template-columns:22px 1fr;padding:5px 8px;border-left:2px solid transparent;color:var(--tx);word-break:break-word;cursor:pointer;user-select:none;transition:background-color .12s ease,color .12s ease,border-color .12s ease;animation:dyai-in .18s ease-out both}
 #dyai-panel .dyai-reply::before{counter-increment:dyai-n;content:counter(dyai-n);color:var(--dm)}
 #dyai-panel .dyai-reply:hover{background:var(--bg2);border-left-color:var(--ac);color:#fff}
@@ -454,14 +464,15 @@
           otherComments(item) ? `【评论区里其他人在聊的(帮你了解视频和大家的关注点)】\n${otherComments(item)}` : "",
           mine ? `【我在这一楼已经说过的话(保持立场一致,别重复)】\n${mine}` : "",
           target ? `【这次要回应的发言】${target}${msgs[msgs.length - 1] && isMe(msgs[msgs.length - 1].nick) ? "(但最后一条是我自己发的,所以是我接着补刀)" : ""}` : "",
-          `回怼风格:${style}`,
+          `风格:${style}`,
           stance ? `我想表达的意思:${stance}` : "",
-          "请针对这一楼里最新一条不是我发的发言,写 3 条回怼;如果最后一条是我发的,就写我接下来补刀的话。"
+          "请按【这次要回应的发言】写 3 条回复,风格见上;如果最后一条是我自己发的,就写我接下来补刀的话。同时检查我说过的话有没有错,有把握的才写进 note。"
         ].filter(Boolean).join("\n\n");
         out.innerHTML = '<div class="dyai-msg"><span class="dyai-sp">⠋</span>生成中…</div>';
-        const { topic, replies } = await generate(userMsg);
+        const { topic, note, replies } = await generate(userMsg);
         out.innerHTML = "";
         if (topic) { const t = document.createElement("div"); t.className = "dyai-topic"; t.textContent = topic; out.appendChild(t); }
+        if (note) { const n = document.createElement("div"); n.className = "dyai-note"; n.textContent = note; out.appendChild(n); }
         replies.forEach(r => {
           const d = document.createElement("div"); d.className = "dyai-reply"; d.textContent = r;
           d.title = "点击填入回复框并复制";
