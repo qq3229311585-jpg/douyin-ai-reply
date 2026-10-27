@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.6
+// @version      1.0.7
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -68,8 +68,45 @@
     throw new Error("模型返回格式不对(可能被截断):" + text.slice(0, 100));
   }
 
+  // 把流式(SSE)返回拼成完整文本:OpenAI 兼容格式 / Claude 格式
+  function sseText(raw, claude) {
+    let out = "";
+    for (const line of String(raw).split("\n")) {
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      try {
+        const j = JSON.parse(data);
+        out += claude ? (j.type === "content_block_delta" && j.delta && j.delta.text) || "" : (j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content) || "";
+      } catch {}
+    }
+    return out;
+  }
+
+  // 边收边看:从还没收完的 JSON 里抠出 note / topic / replies(最后一条可能只有半句)
+  function partialView(text) {
+    const str = key => {
+      const m = new RegExp('"' + key + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)').exec(text);
+      if (!m) return "";
+      try { return JSON.parse('"' + m[1] + '"'); } catch { return m[1]; }
+    };
+    const replies = [];
+    const i = text.indexOf('"replies"');
+    const j = i >= 0 ? text.indexOf("[", i) : -1;
+    if (j >= 0) {
+      const re = /"((?:[^"\\]|\\.)*)("?)/g; re.lastIndex = j + 1;
+      let m;
+      while ((m = re.exec(text.slice(0)))) {
+        let v = m[1]; try { v = JSON.parse('"' + v + '"'); } catch {}
+        if (v) replies.push(v);
+        if (!m[2]) break;
+      }
+    }
+    return { topic: str("topic"), note: str("note"), replies };
+  }
+
   // ---------- 调接口:地址含 anthropic 用 Claude 格式,其余走 OpenAI 兼容格式(DeepSeek 等) ----------
-  function generate(userMsg) {
+  function generate(userMsg, onPartial) {
     const c = cfg();
     return new Promise((resolve, reject) => {
       if (!c.apiKey) return reject(new Error("还没填 API Key:点浏览器工具栏的油猴图标 → 本脚本 → 设置 API Key"));
@@ -78,19 +115,26 @@
       const req = claude ? {
         url: base + "/v1/messages",
         headers: { "content-type": "application/json", "x-api-key": c.apiKey, "anthropic-version": "2023-06-01" },
-        body: { model: c.model, max_tokens: 1200, system: SYSTEM, messages: [{ role: "user", content: userMsg }] }
+        body: { model: c.model, max_tokens: 1200, stream: true, system: SYSTEM, messages: [{ role: "user", content: userMsg }] }
       } : {
         url: base + "/chat/completions",
         headers: { "content-type": "application/json", authorization: "Bearer " + c.apiKey },
-        body: { model: c.model, max_tokens: 1200, temperature: 1.0, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: userMsg }] }
+        body: { model: c.model, max_tokens: 1200, stream: true, temperature: 1.0, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: userMsg }] }
       };
       GM_xmlhttpRequest({
         method: "POST", url: req.url, headers: req.headers, data: JSON.stringify(req.body), timeout: 45000,
+        onprogress: r => {
+          if (!onPartial || (r.status && r.status !== 200)) return;
+          try { onPartial(sseText(r.responseText || "", claude)); } catch {}
+        },
         onload: r => {
           if (r.status < 200 || r.status >= 300) return reject(new Error(`接口返回 ${r.status}:${String(r.responseText).slice(0, 200)}`));
           try {
-            const d = JSON.parse(r.responseText);
-            const text = claude ? (d.content || []).map(b => b.text || "").join("") : (d.choices?.[0]?.message?.content || "");
+            let text = sseText(r.responseText, claude);
+            if (!text) {                                   // 服务器没有走流式:按一次性 JSON 解析
+              const d = JSON.parse(r.responseText);
+              text = claude ? (d.content || []).map(b => b.text || "").join("") : (d.choices?.[0]?.message?.content || "");
+            }
             resolve(parseReply(text));
           } catch (e) { reject(e); }
         },
@@ -351,7 +395,13 @@
     if (panel.style.display === "block" && !panel.contains(e.target) && e.target !== btn) closePanel();
   }, true);
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && panel.style.display === "block") { closePanel(); e.stopPropagation(); }
+    if (e.key === "Escape" && panel.style.display === "block") { closePanel(); e.stopPropagation(); return; }
+    // 数字键 1/2/3 直接选第几条回复(焦点在输入框里时不抢,免得打不了字)
+    if (panel.style.display !== "block" || e.metaKey || e.ctrlKey || e.altKey || !/^[1-9]$/.test(e.key)) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    const d = panel.querySelectorAll(".dyai-reply")[+e.key - 1];
+    if (d) { e.preventDefault(); e.stopPropagation(); d.click(); }
   }, true);
   setInterval(() => {
     if (curItem && btn.style.display === "block" && !isVisible(curItem)) btn.style.display = "none";
@@ -468,17 +518,33 @@
           stance ? `我想表达的意思:${stance}` : "",
           "请按【这次要回应的发言】写 3 条回复,风格见上;如果最后一条是我自己发的,就写我接下来补刀的话。同时检查我说过的话有没有错,有把握的才写进 note。"
         ].filter(Boolean).join("\n\n");
-        out.innerHTML = '<div class="dyai-msg"><span class="dyai-sp">⠋</span>生成中…</div>';
-        const { topic, note, replies } = await generate(userMsg);
-        out.innerHTML = "";
-        if (topic) { const t = document.createElement("div"); t.className = "dyai-topic"; t.textContent = topic; out.appendChild(t); }
-        if (note) { const n = document.createElement("div"); n.className = "dyai-note"; n.textContent = note; out.appendChild(n); }
-        replies.forEach(r => {
-          const d = document.createElement("div"); d.className = "dyai-reply"; d.textContent = r;
-          d.title = "点击填入回复框并复制";
-          d.addEventListener("click", () => { closePanel(); fillAndCopy(item, r); });
-          out.appendChild(d);
-        });
+        out.innerHTML = '<div class="dyai-msg"><span class="dyai-sp">⠋</span>生成中…</div><div></div><div></div><div></div>';
+        const [msgEl, tw, nw, rw] = out.children;
+        let done = false;
+        const setEl = (wrap, cls, text) => {
+          let e = wrap.firstElementChild;
+          if (!text) { if (e) e.remove(); return; }
+          if (!e) { e = document.createElement("div"); e.className = cls; wrap.appendChild(e); }
+          if (e.textContent !== text) e.textContent = text;
+        };
+        const show = p => {
+          if (p.topic || p.note || p.replies.length) msgEl.remove();
+          setEl(tw, "dyai-topic", p.topic); setEl(nw, "dyai-note", p.note);
+          p.replies.forEach((t, i) => {
+            let d = rw.children[i];
+            if (!d) {
+              d = document.createElement("div"); d.className = "dyai-reply"; d.title = "点击填入回复框并复制(或按数字键)";
+              d.addEventListener("click", () => { if (!done) return; const txt = d.textContent; closePanel(); fillAndCopy(item, txt); });
+              rw.appendChild(d);
+            }
+            if (d.textContent !== t) d.textContent = t;
+          });
+          while (rw.children.length > p.replies.length) rw.lastElementChild.remove();
+        };
+        const res = await generate(userMsg, text => show(partialView(text)));
+        done = true; show(res); msgEl.remove();
+        const ae = document.activeElement;
+        if (ae && ae.tagName === "INPUT" && panel.contains(ae)) ae.blur();   // 让数字键 1/2/3 能直接选
       } catch (e) {
         out.innerHTML = ""; const d = document.createElement("div"); d.className = "dyai-err";
         d.textContent = String(e.message || e); out.appendChild(d);
