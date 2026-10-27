@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.1.0
+// @version      1.1.3
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -45,9 +45,9 @@
   // ---------- 人设 ----------
   const SYSTEM = `你是我在抖音评论区里的辩论搭档,站在我这一边,替我写能直接发出去的回复。你有三件事:把这个视频和这一楼读懂;帮我把话回好;如果我自己说错了,提醒我。
 
-【读懂】你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁、争论怎么一步步发展、我前面已经表过什么态。
+【读懂】你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。正文里的 [图片] 表示这个人发了一张图,你看不到图里画了什么,别瞎猜,只能根据上下文和他的文字回应;像 [泪奔]、[看] 这样方括号里是表情包的名字,表示他当时的语气或情绪。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁、争论怎么一步步发展、我前面已经表过什么态。
 
-【回复】按"风格"那一行写 3 条回复,每条 50 字以内,口语化,像真人在评论区手打的,不要书面腔,不要解释,不要带引号。每条回复都必须有"理":先点中对方具体说过的某句话或某个前提,再用一个事实、数据、反例、类比或推理把它拆掉,让人看完觉得"对,这里确实站不住",而不是只有情绪和嘲讽。只骂不讲理的、空喊口号的不要写。三条要用不同的打法(例如:抓逻辑漏洞或前后矛盾 / 拿事实或数据反驳 / 用类比或反问归谬),不要三条说同一个意思。引用的事实和数字必须是你有十足把握的,没把握就改用逻辑或类比,绝不能编数据、编出处,不然我会被对方当场打脸。要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;要接住"这次要回应的发言",紧扣这个视频和这一楼的具体细节,不要写放在哪都能用的空话。风格的含义:
+【回复】按"风格"那一行写 3 条回复,长度看内容需要:单纯怼回去的可以简短有力;需要科普、讲事实、说清道理的时候,就把话说明白、说完整,不要一两句就草草收场(一般 60~150 字),但每一句都要有用,别灌水,最长不要超过 200 字(评论太长发不出去)。口语化,像真人在评论区手打的,不要书面腔,不要带引号,不要在回复前面加"回复某某"之类的前缀。每条回复都必须有"理":先点中对方具体说过的某句话或某个前提,再用一个事实、数据、反例、类比或推理把它拆掉,让人看完觉得"对,这里确实站不住",而不是只有情绪和嘲讽。只骂不讲理的、空喊口号的不要写。三条要用不同的打法(例如:抓逻辑漏洞或前后矛盾 / 拿事实或数据反驳 / 用类比或反问归谬),不要三条说同一个意思。引用的事实和数字必须是你有十足把握的,没把握就改用逻辑或类比,绝不能编数据、编出处,不然我会被对方当场打脸。要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;回复是直接对"这次要回应的发言"的那个人说的:用"你"称呼他,点名引用他说过的原话再回应,别写成对着所有人演讲,也别搞错对象。要紧扣这个视频和这一楼的具体细节,不要写放在哪都能用的空话。风格的含义:
 - 狠辣毒舌:狠、准,而且狠在道理上:专挑逻辑漏洞、前后矛盾、双标和外行硬装内行,一针见血,有杀伤力;语气可以冲,但每句都要落在对方具体的错处上。
 - 阴阳怪气:话里有话,表面客气、实则讽刺,但讽刺的点必须是对方真正的破绽。
 - 幽默调侃:用梗和玩笑化解并反击,轻松好笑,笑点要建立在对方的逻辑问题上。
@@ -197,9 +197,26 @@
   const NOISE = /^(\.\.\.|分享|回复|回复中|收起|作者|作者赞过|作者回复过|置顶|热评|展开\d*条?回复.*|展开更多.*)$/;
   const ITEM = '[data-e2e="comment-item"]';
 
+  // 抖音的表情([泪奔]、[看]、emoji)和评论里的图片都是 <img>,innerText 读不到。临时把它们换成文字再读,读完立刻放回原样(同一个同步任务里,页面不会闪)
+  function itemText(item) {
+    const swaps = [];
+    item.querySelectorAll("img").forEach(img => {
+      const w = img.getBoundingClientRect().width, alt = (img.alt || "").trim();
+      let t = "";
+      if (w >= 80) t = "[图片]";
+      else if (alt && w <= 24 && !alt.endsWith("头像") && (alt.startsWith("[") || /\p{Extended_Pictographic}/u.test(alt))) t = alt;   // 只换表情和 emoji,头像之类的说明文字不要
+      if (!t || !img.parentNode) return;
+      const node = document.createTextNode(t);
+      img.parentNode.replaceChild(node, img); swaps.push([node, img]);
+    });
+    const text = item.innerText;
+    swaps.forEach(([node, img]) => { if (node.parentNode) node.parentNode.replaceChild(img, node); });
+    return text;
+  }
+
   // innerText 结构:昵称 / (作者) / 正文 / (作者赞过) / "1月前·地区" / 点赞数 / 分享 / 回复 / (下一条的昵称…)
   function parseThread(item) {
-    const lines = item.innerText.split("\n").map(s => s.trim()).filter(Boolean);
+    const lines = itemText(item).split("\n").map(s => s.trim()).filter(Boolean);
     const msgs = []; let buf = [], cur = null, afterTime = false, isAuthor = false, liked = false;
     for (const l of lines) {
       if (afterTime) {
@@ -321,12 +338,17 @@
     }
     return val() === text;
   }
-  async function fillAndCopy(item, text) {
-    try { await navigator.clipboard.writeText(text); } catch {}
+  // 这一楼里每条发言各有一个「回复」按钮,按顺序和解析出的发言一一对应;数量对不上就退回第一个
+  async function fillAndCopy(item, text, idx, n) {
+    try { navigator.clipboard.writeText(text).catch(() => {}); } catch {}   // 顺手复制一份,但不等它(权限没答复时会一直卡住)
+    await sleep(120);   // 等你这一下点击在页面里处理完再点「回复」,否则抖音会当成"点了别处",把刚弹出的回复框又关掉
     try {
-      const rb = [...item.querySelectorAll("span,div,button")].find(e => e.children.length === 0 && e.textContent.trim() === "回复");
-      rb?.click(); await sleep(500);
-      const box = document.querySelector('.public-DraftEditor-content[contenteditable="true"]');
+      const leaves = [...item.querySelectorAll("span,div,button")].filter(e => e.children.length === 0 && /^回复(中)?$/.test(e.textContent.trim()));
+      const rb = (idx != null && leaves.length === n && leaves[idx]) || leaves.find(e => e.textContent.trim() === "回复");
+      if (rb && rb.textContent.trim() === "回复") rb.click();     // 已经是「回复中」就不用再点
+      let box = null;                                           // 回复框出现得有快有慢,最多等 3 秒,一出现就填
+      for (let i = 0; i < 30 && !box; i++) { await sleep(100); box = document.querySelector('.public-DraftEditor-content[contenteditable="true"]'); }
+      if (box) await sleep(250);
       if (box && await insertIntoBox(box, text)) return;
     } catch {}
     toast("没能自动填入,已复制到剪贴板,点「回复」后粘贴即可");
@@ -546,6 +568,7 @@
         const hiddenN = expandBtns.reduce((n, t) => n + ((/^展开(\d+)条回复/.exec(t) || [0, 0])[1] * 1), 0);
         const hidden = hiddenN ? `${hiddenN}条` : (expandBtns.length ? "更多" : "");
         const lastOther = msgs.map((m, i) => [m, i + 1]).filter(([m]) => !isMe(m.nick)).pop();
+        const targetIdx = lastOther ? lastOther[1] - 1 : msgs.length - 1;
         const mine = msgs.filter(m => isMe(m.nick)).map(m => `- ${m.to ? `(回复 ${m.to})` : ""}${m.text}`).join("\n");
         const target = lastOther ? `第 ${lastOther[1]} 条,${lastOther[0].nick}${lastOther[0].to ? ` 回复 ${isMe(lastOther[0].to) ? "【我】" : lastOther[0].to}` : ""}:${lastOther[0].text}` : "";
         const userMsg = [
@@ -584,7 +607,7 @@
             let d = rw.children[i];
             if (!d) {
               d = document.createElement("div"); d.className = "dyai-reply"; d.title = "点击填入回复框并复制(或按数字键)";
-              d.addEventListener("click", () => { if (!done) return; const txt = d.textContent; closePanel(); fillAndCopy(item, txt); });
+              d.addEventListener("click", () => { if (!done) return; const txt = d.textContent; closePanel(); fillAndCopy(item, txt, targetIdx, msgs.length); });
               rw.appendChild(d);
             }
             if (d.textContent !== t) d.textContent = t;
