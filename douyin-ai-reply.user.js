@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.1
+// @version      1.0.2
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -363,15 +363,19 @@
   // 抖音有全局快捷键(空格/F/方向键),面板里打字不能冒泡出去
   ["keydown", "keyup", "keypress"].forEach(t => panel.addEventListener(t, e => e.stopPropagation()));
 
-  document.addEventListener("mouseover", e => {
+  // 按钮只在鼠标真的移到某条评论上时才出现;一滚动就立刻消失,滚完也不会自己冒出来(浏览器滚完会补发一次原地的鼠标事件,要忽略)
+  let calm = false, lastX = -1, lastY = -1;
+  document.addEventListener("mousemove", e => {
+    if (calm) { if (e.clientX === lastX && e.clientY === lastY) return; calm = false; }
+    lastX = e.clientX; lastY = e.clientY;
     if (e.target === btn || panel.contains(e.target)) { clearTimeout(hideTimer); return; }
     const item = e.target.closest && e.target.closest(ITEM);
     clearTimeout(hideTimer);
-    if (item) { curItem = item; placeBtn(item); }
+    if (item) { if (item !== curItem || btn.style.display !== "block") { curItem = item; placeBtn(item); } }
     else hideTimer = setTimeout(() => { btn.style.display = "none"; }, 400);
   }, true);
-  addEventListener("scroll", () => {
-    if (curItem && btn.style.display === "block") placeBtn(curItem);
+  addEventListener("scroll", e => {
+    if (!panel.contains(e.target)) { calm = true; btn.style.display = "none"; }
     if (panel.style.display === "block") placePanel();
   }, true);
   addEventListener("resize", () => { if (panel.style.display === "block") placePanel(); });
