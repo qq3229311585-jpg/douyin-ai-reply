@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.2
+// @version      1.0.3
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -236,10 +236,10 @@
 #dyai-btn,#dyai-panel,.dyai-toast{--bg:#141416;--bg2:#1d1d21;--bd:#2b2b30;--bd2:#3a3a42;--fg:#d6d6da;--tx:#bdbdc4;--mu:#74747c;--dm:#5d5d66;--ac:#7dcfff;--err:#ff7b72}
 
 /* 悬浮按钮 */
-#dyai-btn{position:fixed;z-index:2147483000;display:none;height:24px;padding:0 10px;border-radius:6px;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);font-size:12px;line-height:22px;white-space:nowrap;cursor:pointer;user-select:none;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:border-color .12s ease,color .12s ease;animation:dyai-pop .12s ease-out}
+#dyai-btn{position:fixed;z-index:2147483000;display:none;height:24px;padding:0 10px;border-radius:6px;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);font-size:12px;line-height:22px;white-space:nowrap;cursor:pointer;user-select:none;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:transform .14s ease,background-color .14s ease,box-shadow .14s ease;animation:dyai-pop .12s ease-out}
 #dyai-btn::before{content:"❯";color:var(--ac);margin-right:6px}
-#dyai-btn:hover{border-color:var(--ac);color:#fff}
-#dyai-btn:active{transform:translateY(1px)}
+#dyai-btn:hover{transform:scale(1.1);background:var(--bg2);box-shadow:0 8px 22px rgba(0,0,0,.55)}
+#dyai-btn:active{transform:scale(.96)}
 
 /* 面板 */
 #dyai-panel{position:fixed;z-index:2147483001;display:none;width:320px;max-width:calc(100vw - 16px);max-height:70vh;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 12px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);box-shadow:0 14px 34px rgba(0,0,0,.55);scrollbar-width:thin;scrollbar-color:var(--bd2) transparent;animation:dyai-in .14s ease-out}
