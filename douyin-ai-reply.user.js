@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.3
+// @version      1.0.4
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -45,7 +45,7 @@
 风格:狠、准、毒舌。专挑对方话里的逻辑漏洞、前后矛盾、自相打脸、双标和外行硬装内行下手,用反问、反讽、拆台、一针见血的短句把对方怼到没话说。要有杀伤力和梗,不要客气,不要和稀泥,不要讲大道理。
 格式:每条 40 字以内,口语化,像真人在评论区手打的,不要书面腔,不要解释,不要带引号。
 底线(为了不被举报封号,也为了怼得更高级):只打观点、言行和水平,不骂脏话,不攻击对方的地域、性别、外貌、疾病、家人、民族等身份特征,不威胁,不人肉。
-你会拿到视频背景和一整楼的对话原文(按顺序编号)。你知道用户的抖音昵称,对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。要认真读完前因后果,记住双方每一轮说了什么,别重复我已经说过的话,要接住对方最新一句,把他的话反过来用。
+你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。你知道用户的抖音昵称,对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁("A 回复 B"表示 A 是在对 B 说话)、争论是怎么一步步发展的、我前面已经表过什么态。回怼要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;要接住该回应的那条发言,把他的话反过来用。
 动笔前先搞清楚三件事:①这个视频到底在讲什么;②这一楼在争什么、双方各自的立场和争论焦点;③对方最新一句的破绽在哪。回怼必须紧扣这个视频和这一楼的具体话题与细节,不要写放在哪都能用的空话。
 只输出 JSON 对象,格式:{"topic":"一句话说明:视频讲什么 + 这一楼在争什么(30字内)","replies":["回复1","回复2","回复3"]},不要任何别的文字。`;
 
@@ -115,25 +115,32 @@
       }
       if (l === "作者") { isAuthor = true; continue; }
       if (l === "作者赞过") { liked = true; continue; }
-      if (NOISE.test(l)) continue;
+      if (NOISE.test(l) || /^[▸▶►▷›>→]$/.test(l)) continue;
       if (TIME_RE.test(l) && /·|前$/.test(l) && l.length < 24) {
         if (buf.length) {
-          cur = { nick: buf[0], text: buf.slice(1).join(" "), loc: (l.split("·")[1] || "").trim(), author: isAuthor, liked, likes: null };
+          cur = { nick: buf[0], lines: buf.slice(1), to: "", loc: (l.split("·")[1] || "").trim(), author: isAuthor, liked, likes: null };
           msgs.push(cur);
         }
         buf = []; isAuthor = false; liked = false; afterTime = true; continue;
       }
       buf.push(l);
     }
+    // "A ▸ B" 形式的回复:B 的名字会紧跟在 A 后面。只要它是这一楼里出现过的发言人,就认定是"A 回复 B",从正文里拿出来
+    const nicks = new Set(msgs.map(m => m.nick));
+    msgs.forEach(m => {
+      if (m.lines.length >= 2 && nicks.has(m.lines[0])) { m.to = m.lines[0]; m.lines = m.lines.slice(1); }
+      m.text = m.lines.join(" ");
+    });
     return msgs;
   }
 
+  const isMe = nick => { const me = cfg().me; return !!me && String(nick).trim().toLowerCase() === me.trim().toLowerCase(); };
   function threadText(msgs) {
-    const me = cfg().me;
     const t = msgs.map((m, i) => {
-      const label = me && m.nick === me ? "【我】" : m.nick + (m.author ? "【视频作者】" : "");
+      const label = isMe(m.nick) ? "【我】" : m.nick + (m.author ? "【视频作者】" : "");
+      const to = m.to ? ` 回复 ${isMe(m.to) ? "【我】" : m.to}` : "";
       const meta = [m.loc, m.likes ? m.likes + "赞" : "", m.liked ? "视频作者赞过" : ""].filter(Boolean).join(",");
-      return `${i + 1}. ${label}${meta ? `(${meta})` : ""}:${m.text}`;
+      return `${i + 1}. ${label}${to}${meta ? `(${meta})` : ""}:${m.text}`;
     }).join("\n");
     return t.length > 6000 ? t.split("\n")[0] + "\n(中间略)\n" + t.slice(-5500) : t;
   }
@@ -430,6 +437,11 @@
         if (!msgs.length) throw new Error("没读到评论文字(页面结构可能变了)");
         const me = cfg().me, stance = panel.querySelector(".dyai-stance").value.trim();
         const vi = await videoInfo(item);
+        // 还没展开的回复:AI 没看到,要明说,别让它装作都读过
+        const hidden = [...item.querySelectorAll("button")].reduce((n, b) => n + (/^展开(\d+)条回复/.exec(b.textContent.trim()) || [0, 0])[1] * 1, 0);
+        const lastOther = msgs.map((m, i) => [m, i + 1]).filter(([m]) => !isMe(m.nick)).pop();
+        const mine = msgs.filter(m => isMe(m.nick)).map(m => `- ${m.to ? `(回复 ${m.to})` : ""}${m.text}`).join("\n");
+        const target = lastOther ? `第 ${lastOther[1]} 条,${lastOther[0].nick}${lastOther[0].to ? ` 回复 ${isMe(lastOther[0].to) ? "【我】" : lastOther[0].to}` : ""}:${lastOther[0].text}` : "";
         const userMsg = [
           "【背景】\n" + [
             vi.author ? `视频作者:${vi.author}` : "",
@@ -442,7 +454,10 @@
             me ? `我的抖音昵称:${me}(下面对话里标【我】的就是我本人)` : "我的昵称没设置,默认要回应的是最后一条发言"
           ].filter(Boolean).join("\n"),
           `【这一楼的对话,按时间顺序】\n${threadText(msgs)}`,
+          hidden ? `【注意】这一楼还有 ${hidden} 条回复没有展开,你看不到它们。别假装知道它们说了什么,只根据上面已有的内容回应。` : "",
           otherComments(item) ? `【评论区里其他人在聊的(帮你了解视频和大家的关注点)】\n${otherComments(item)}` : "",
+          mine ? `【我在这一楼已经说过的话(保持立场一致,别重复)】\n${mine}` : "",
+          target ? `【这次要回应的发言】${target}${msgs[msgs.length - 1] && isMe(msgs[msgs.length - 1].nick) ? "(但最后一条是我自己发的,所以是我接着补刀)" : ""}` : "",
           `回怼风格:${style}`,
           stance ? `我想表达的意思:${stance}` : "",
           "请针对这一楼里最新一条不是我发的发言,写 3 条回怼;如果最后一条是我发的,就写我接下来补刀的话。"
