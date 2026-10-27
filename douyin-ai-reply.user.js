@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.2.0
+// @version      1.2.1
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -47,7 +47,7 @@
 
 【读懂】你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。正文里的 [图片] 表示这个人发了一张图,你看不到图里画了什么,别瞎猜,只能根据上下文和他的文字回应;像 [泪奔]、[看] 这样方括号里是表情包的名字,表示他当时的语气或情绪。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁、争论怎么一步步发展、我前面已经表过什么态。
 
-【回复】按"风格"那一行写 3 条回复,长度看内容需要:单纯怼回去的可以简短有力;需要科普、讲事实、说清道理的时候,就把话说明白、说完整,不要一两句就草草收场(一般 60~150 字),但每一句都要有用,别灌水,最长不要超过 200 字(评论太长发不出去)。口语化,像真人在评论区手打的,不要书面腔,不要带引号,不要在回复前面加"回复某某"之类的前缀。每条回复都必须有"理":先点中对方具体说过的某句话或某个前提,再用一个事实、数据、反例、类比或推理把它拆掉,让人看完觉得"对,这里确实站不住",而不是只有情绪和嘲讽。只骂不讲理的、空喊口号的不要写。三条要用不同的打法(例如:抓逻辑漏洞或前后矛盾 / 拿事实或数据反驳 / 用类比或反问归谬),不要三条说同一个意思。引用的事实和数字必须是你有十足把握的,没把握就改用逻辑或类比,绝不能编数据、编出处,不然我会被对方当场打脸。要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;回复是直接对"这次要回应的发言"的那个人说的:用"你"称呼他,点名引用他说过的原话再回应,别写成对着所有人演讲,也别搞错对象。要紧扣这个视频和这一楼的具体细节,不要写放在哪都能用的空话。风格的含义:
+【回复】按"风格"那一行写 3 条回复,长度看内容需要:单纯怼回去的可以简短有力;需要科普、讲事实、说清道理的时候,就把话说明白、说完整,不要一两句就草草收场(一般 60~150 字),但每一句都要有用,别灌水,最长不要超过 200 字(评论太长发不出去)。口语化,像真人在评论区手打的,不要书面腔,不要带引号,不要在回复前面加"回复某某"之类的前缀。每条回复都必须有"理":先点中对方具体说过的某句话或某个前提,再用一个事实、数据、反例、类比或推理把它拆掉,让人看完觉得"对,这里确实站不住",而不是只有情绪和嘲讽。只骂不讲理的、空喊口号的不要写。回复必须讲得通、站得住:先准确理解对方真正的主张,再针对它反驳,不许曲解原意、不许稻草人;不要用夸张到荒谬的类比(把对方的话推到极端再嘲笑)当论据,类比必须真的和对方的情形对得上;也别自己前后矛盾,别推翻我前面已经说过的立场。三条要用不同的打法(例如:抓逻辑漏洞或前后矛盾 / 拿事实或数据反驳 / 用类比或反问归谬),不要三条说同一个意思。引用的事实和数字必须是你有十足把握的,没把握就改用逻辑或类比,绝不能编数据、编出处,不然我会被对方当场打脸。要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;回复是直接对"这次要回应的发言"的那个人说的:用"你"称呼他,点名引用他说过的原话再回应,别写成对着所有人演讲,也别搞错对象。要紧扣这个视频和这一楼的具体细节,不要写放在哪都能用的空话。风格的含义:
 - 狠辣毒舌:狠、准,而且狠在道理上:专挑逻辑漏洞、前后矛盾、双标和外行硬装内行,一针见血,有杀伤力;语气可以冲,但每句都要落在对方具体的错处上。
 - 阴阳怪气:话里有话,表面客气、实则讽刺,但讽刺的点必须是对方真正的破绽。
 - 幽默调侃:用梗和玩笑化解并反击,轻松好笑,笑点要建立在对方的逻辑问题上。
@@ -56,9 +56,9 @@
 
 【提醒我】先核对我(标【我】的)前面说的话和我这次想表达的意思:如果有事实错误、说错的数据或典故、容易被对方抓住的漏洞,写进 note,并且回复里不要再重复这个错误,也别把对方说对的地方硬说成错的。如果有值得我知道的相关背景知识(能扩充我的知识面,也能让回复更有底气),也可以写进 note。只在你有把握时才写;没有就让 note 为空字符串,不要凑数。note 要简短(60 字内),口气像朋友提醒,别说教。
 
-分析时做批判性检查:对方的前提是什么?结论是怎么推出来的,哪一步不成立?有没有偷换概念、稻草人、以偏概全、双标、自相矛盾?strategy 里要写清楚三条回复各自用什么理由、打哪一句。
+分析时做批判性检查:对方的前提是什么?结论是怎么推出来的,哪一步不成立?有没有偷换概念、稻草人、以偏概全、双标、自相矛盾?strategy 里要写清楚三条回复各自用什么理由、打哪一句。check 里逐条自查:有没有曲解对方原意、有没有稻草人或夸张类比、有没有和我前面说的矛盾、事实站不站得住,有问题就改好再写进 replies。
 
-只输出一个 JSON 对象,所有字段的值都用字符串(只有 replies 是字符串数组),按这个顺序:{"thread":"…","opponent":"…","weak":"…","stance":"…","strategy":"…","note":"…","topic":"…","replies":["…","…","…"]}。thread/opponent/weak/stance/strategy 是你的分析(不给用户看);note 是给我的提醒;topic 是一句话说明视频讲什么 + 这一楼在争什么(30字内)。不要任何别的文字。`;
+只输出一个 JSON 对象,所有字段的值都用字符串(只有 replies 是字符串数组),按这个顺序:{"thread":"…","opponent":"…","weak":"…","stance":"…","strategy":"…","check":"…","note":"…","topic":"…","replies":["…","…","…"]}。thread/opponent/weak/stance/strategy/check 是你的分析(不给用户看);note 是给我的提醒;topic 是一句话说明视频讲什么 + 这一楼在争什么(30字内)。不要任何别的文字。`;
 
   // 解析模型输出:优先是 {"...分析字段","topic","replies":[字符串...]};兜底接受纯字符串数组。
   // 只接受"全是字符串"的数组,避免输出被截断时把分析里的东西当成回复显示出来。
@@ -187,7 +187,7 @@
     if (/anthropic\.com/.test(base)) {
       const raw = await gmPost(base + "/v1/messages",
         { "content-type": "application/json", "x-api-key": c.apiKey, "anthropic-version": "2023-06-01" },
-        { model: c.model, max_tokens: 1200, stream: true, system: SYSTEM + (pics.length ? VISION_NOTE : ""), messages: [{ role: "user", content: pics.length ? [{ type: "text", text: userMsg }].concat(pics.flatMap(i => { const m = /^data:([^;]+);base64,(.*)$/.exec(i.url) || []; return [{ type: "text", text: `[图片${i.n}]` }, { type: "image", source: { type: "base64", media_type: m[1] || "image/jpeg", data: m[2] || "" } }]; })) : userMsg }] },
+        { model: c.model, max_tokens: 1800, stream: true, system: SYSTEM + (pics.length ? VISION_NOTE : ""), messages: [{ role: "user", content: pics.length ? [{ type: "text", text: userMsg }].concat(pics.flatMap(i => { const m = /^data:([^;]+);base64,(.*)$/.exec(i.url) || []; return [{ type: "text", text: `[图片${i.n}]` }, { type: "image", source: { type: "base64", media_type: m[1] || "image/jpeg", data: m[2] || "" } }]; })) : userMsg }] },
         onPartial ? t => onPartial(sseText(t, true)) : null);
       let text = sseText(raw, true);
       if (!text) text = (JSON.parse(raw).content || []).map(b => b.text || "").join("");
@@ -208,7 +208,7 @@
     };
     for (let round = 0; round < 3; round++) {
       const useTools = canSearch && round < 2;               // 最多搜两轮,第三轮必须给出回复
-      const body = { model: c.model, max_tokens: 1200, stream: true, temperature: 1.0, messages };
+      const body = { model: c.model, max_tokens: 1800, stream: true, temperature: 1.0, messages };
       if (/flash/i.test(c.model) && !lite) body.thinking = { type: "disabled" };   // 默认会先长时间思考,关掉更快更省
       if (useTools) body.tools = [SEARCH_TOOL];
       const raw = await post(body, onPartial ? t => onPartial(sseParse(t, false).text) : null);
@@ -249,7 +249,15 @@
       const node = document.createTextNode(t);
       img.parentNode.replaceChild(node, img); swaps.push([node, img]);
     });
+    // 抖音有时把"昵称 ▸ 被回复的人"渲染成相邻的行内元素,innerText 会把两个名字粘成一个。相邻文字不是同一个节点的直接下一个时,临时插个换行把它们分开
+    const brs = [], tw = document.createTreeWalker(item, NodeFilter.SHOW_TEXT), nodes = [];
+    for (let n; (n = tw.nextNode());) if (n.nodeValue.trim()) nodes.push(n);
+    nodes.forEach((b, i) => {
+      const a = nodes[i - 1];
+      if (a && b.parentNode && (a.parentNode !== b.parentNode || a.nextSibling !== b)) { const br = document.createElement("br"); b.parentNode.insertBefore(br, b); brs.push(br); }
+    });
     const text = item.innerText;
+    brs.forEach(br => br.remove());
     swaps.forEach(([node, img]) => { if (node.parentNode) node.parentNode.replaceChild(img, node); });
     return text;
   }
@@ -277,9 +285,17 @@
       buf.push(l);
     }
     // "A ▸ B" 形式的回复:B 的名字会紧跟在 A 后面。只要它是这一楼里出现过的发言人,就认定是"A 回复 B",从正文里拿出来
+    // 兜底:两个名字还是粘在一起时,只要其中一个是我的昵称,就能拆开
+    const me = cfg().me.trim().toLowerCase();
+    if (me) msgs.forEach(m => {
+      const n = m.nick, l = n.toLowerCase();
+      if (l === me || n.length > me.length + 30) return;
+      if (l.startsWith(me)) { m.to = n.slice(me.length).trim(); m.nick = n.slice(0, me.length); }
+      else if (l.endsWith(me)) { m.to = n.slice(n.length - me.length); m.nick = n.slice(0, n.length - me.length).trim(); }
+    });
     const nicks = new Set(msgs.map(m => m.nick));
     msgs.forEach(m => {
-      if (m.lines.length >= 2 && nicks.has(m.lines[0])) { m.to = m.lines[0]; m.lines = m.lines.slice(1); }
+      if (!m.to && m.lines.length >= 2 && nicks.has(m.lines[0])) { m.to = m.lines[0]; m.lines = m.lines.slice(1); }
       m.text = m.lines.join(" ");
     });
     return msgs;
@@ -407,7 +423,7 @@
 #dyai-btn:active{transform:scale(.96)}
 
 /* 面板 */
-#dyai-panel{position:fixed;z-index:2147483001;display:none;width:320px;max-width:calc(100vw - 16px);max-height:70vh;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 12px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);box-shadow:0 14px 34px rgba(0,0,0,.55);scrollbar-width:thin;scrollbar-color:var(--bd2) transparent;animation:dyai-in .14s ease-out}
+#dyai-panel{position:fixed;z-index:2147483001;display:none;width:320px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 12px;border-radius:10px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);box-shadow:0 14px 34px rgba(0,0,0,.55);scrollbar-width:thin;scrollbar-color:var(--bd2) transparent;animation:dyai-in .14s ease-out}
 #dyai-panel *{all:revert;box-sizing:border-box;font:inherit;color:inherit;margin:0;min-width:0}
 
 /* 标题栏 */
@@ -505,7 +521,7 @@
     let left = r.left - w - 8;
     if (left < 8) left = Math.min(r.right - w, innerWidth - w - 8);
     panel.style.left = left + "px";
-    panel.style.top = Math.min(Math.max(top, 8), innerHeight - 200) + "px";
+    panel.style.top = Math.max(8, Math.min(top, innerHeight - panel.offsetHeight - 8)) + "px";   // 面板很高时往上顶,不让下半截掉出屏幕
   }
   let panelUrl = "";
   function closePanel() { panel.style.display = "none"; panelItem = null; hideBtn(); }
@@ -683,6 +699,7 @@
             if (d.textContent !== t) d.textContent = t;
           });
           while (rw.children.length > p.replies.length) rw.lastElementChild.remove();
+          placePanel();
         };
         const res = await generate(userMsg, text => show(partialView(text)), st => { if (msgEl.isConnected) msgEl.lastChild.textContent = st; }, pics);
         done = true; show(res); msgEl.remove();
