@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.4
+// @version      1.0.5
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -46,8 +46,18 @@
 格式:每条 40 字以内,口语化,像真人在评论区手打的,不要书面腔,不要解释,不要带引号。
 底线(为了不被举报封号,也为了怼得更高级):只打观点、言行和水平,不骂脏话,不攻击对方的地域、性别、外貌、疾病、家人、民族等身份特征,不威胁,不人肉。
 你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。你知道用户的抖音昵称,对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁("A 回复 B"表示 A 是在对 B 说话)、争论是怎么一步步发展的、我前面已经表过什么态。回怼要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;要接住该回应的那条发言,把他的话反过来用。
-动笔前先搞清楚三件事:①这个视频到底在讲什么;②这一楼在争什么、双方各自的立场和争论焦点;③对方最新一句的破绽在哪。回怼必须紧扣这个视频和这一楼的具体话题与细节,不要写放在哪都能用的空话。
-只输出 JSON 对象,格式:{"topic":"一句话说明:视频讲什么 + 这一楼在争什么(30字内)","replies":["回复1","回复2","回复3"]},不要任何别的文字。`;
+动笔前先在 JSON 的分析字段里想清楚(这些字段不会给用户看,只用来帮你把回复写准)。分析时做批判性检查:对方的前提是什么?有没有偷换概念、稻草人、以偏概全、双标、自相矛盾?回怼必须紧扣这个视频和这一楼的具体话题与细节,不要写放在哪都能用的空话。
+只输出一个 JSON 对象,所有字段的值都用字符串(只有 replies 是字符串数组),按这个顺序:{"thread":"这一楼谁和谁在争什么、怎么发展的","opponent":"要回应的那个人的核心论点","weak":"他最大的破绽","stance":"我前面表过的立场(没有就写无)","strategy":"这次打哪里、怎么打","topic":"一句话说明:视频讲什么 + 这一楼在争什么(30字内)","replies":["回复1","回复2","回复3"]},不要任何别的文字。`;
+
+  // 解析模型输出:优先是 {"...分析字段","topic","replies":[字符串...]};兜底接受纯字符串数组。
+  // 只接受"全是字符串"的数组,避免输出被截断时把分析里的东西当成回复显示出来。
+  function parseReply(text) {
+    const o = text.match(/\{[\s\S]*\}/), a = text.match(/\[[\s\S]*\]/);
+    const ok = x => Array.isArray(x) && x.length > 0 && x.every(t => typeof t === "string" && t.trim());
+    try { if (o) { const j = JSON.parse(o[0]); if (ok(j.replies)) return { topic: String(j.topic || ""), replies: j.replies.map(t => t.trim()) }; } } catch {}
+    try { if (a) { const arr = JSON.parse(a[0]); if (ok(arr)) return { topic: "", replies: arr.map(t => t.trim()) }; } } catch {}
+    throw new Error("模型返回格式不对(可能被截断):" + text.slice(0, 100));
+  }
 
   // ---------- 调接口:地址含 anthropic 用 Claude 格式,其余走 OpenAI 兼容格式(DeepSeek 等) ----------
   function generate(userMsg) {
@@ -59,11 +69,11 @@
       const req = claude ? {
         url: base + "/v1/messages",
         headers: { "content-type": "application/json", "x-api-key": c.apiKey, "anthropic-version": "2023-06-01" },
-        body: { model: c.model, max_tokens: 700, system: SYSTEM, messages: [{ role: "user", content: userMsg }] }
+        body: { model: c.model, max_tokens: 1200, system: SYSTEM, messages: [{ role: "user", content: userMsg }] }
       } : {
         url: base + "/chat/completions",
         headers: { "content-type": "application/json", authorization: "Bearer " + c.apiKey },
-        body: { model: c.model, max_tokens: 700, temperature: 1.2, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: userMsg }] }
+        body: { model: c.model, max_tokens: 1200, temperature: 1.0, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: userMsg }] }
       };
       GM_xmlhttpRequest({
         method: "POST", url: req.url, headers: req.headers, data: JSON.stringify(req.body), timeout: 45000,
@@ -72,12 +82,7 @@
           try {
             const d = JSON.parse(r.responseText);
             const text = claude ? (d.content || []).map(b => b.text || "").join("") : (d.choices?.[0]?.message?.content || "");
-            const o = text.match(/\{[\s\S]*\}/), a = text.match(/\[[\s\S]*\]/);
-            let res = null;
-            try { if (o) { const j = JSON.parse(o[0]); if (Array.isArray(j.replies)) res = { topic: String(j.topic || ""), replies: j.replies }; } } catch {}
-            if (!res && a) res = { topic: "", replies: JSON.parse(a[0]) };
-            if (!res) throw new Error("模型返回格式不对:" + text.slice(0, 100));
-            resolve(res);
+            resolve(parseReply(text));
           } catch (e) { reject(e); }
         },
         onerror: () => reject(new Error("网络错误:连不上接口地址")),
@@ -90,18 +95,6 @@
   const TIME_RE = /(刚刚|\d+\s*(分钟|小时|天|周|个月|月|年)前|\d{4}-\d{1,2}-\d{1,2}|昨天|前天)/;
   const NOISE = /^(\.\.\.|分享|回复|回复中|收起|作者|作者赞过|作者回复过|置顶|热评|展开\d*条?回复.*|展开更多.*)$/;
   const ITEM = '[data-e2e="comment-item"]';
-
-  // 自动点开所有"展开N条回复/展开更多",直到整楼读全(和你自己一直点一样)
-  async function expandThread(item) {
-    let stall = 0;
-    for (let i = 0; i < 30; i++) {
-      const b = [...item.querySelectorAll("button")].find(e => /^展开(\d+条)?回复|^展开更多|^查看更多/.test(e.textContent.trim()));
-      if (!b) break;
-      const before = item.innerText.length;
-      b.click(); await sleep(700);
-      if (item.innerText.length === before) { if (++stall >= 2) break; } else stall = 0;
-    }
-  }
 
   // innerText 结构:昵称 / (作者) / 正文 / (作者赞过) / "1月前·地区" / 点赞数 / 分享 / 回复 / (下一条的昵称…)
   function parseThread(item) {
@@ -180,7 +173,9 @@
       if (!r.ok) throw new Error(r.status);
       const d = (await r.json()).aweme_detail;
       if (!d) throw new Error("no detail");
-      const ch = d.recommend_chapter_info || {};
+      const ch = d.recommend_chapter_info || {};                 // 有的视频放在这里
+      const abstract = ch.chapter_abstract || d.chapter_abstract;  // 有的视频放在顶层
+      const chapterList = ch.recommend_chapter_list || d.chapter_list || [];
       const full = {
         author: info.author || (d.author && d.author.nickname) || "",
         desc: info.desc || d.desc || "",
@@ -188,8 +183,8 @@
         mix: (d.mix_info && d.mix_info.mix_name) || "",
         music: (d.music && d.music.title) || "",
         date: d.create_time ? new Date(d.create_time * 1000).toLocaleDateString("zh-CN") : "",
-        summary: String(ch.chapter_abstract || "").slice(0, 500),
-        chapters: (ch.recommend_chapter_list || []).map(c => `${mmss(c.timestamp)} ${c.desc || ""}${c.detail ? ":" + c.detail : ""}`).join("\n").slice(0, 1200)
+        summary: String(abstract || "").slice(0, 500),
+        chapters: chapterList.map(c => `${mmss(c.timestamp)} ${c.desc || ""}${c.detail ? ":" + c.detail : ""}`).join("\n").slice(0, 1200)
       };
       infoCache.set(id, full);
       return full;
@@ -432,13 +427,14 @@
       }
       go.disabled = true; out.innerHTML = '<div class="dyai-msg"><span class="dyai-sp">⠋</span>读取整楼对话…</div>';
       try {
-        await expandThread(item);
         const msgs = parseThread(item);
         if (!msgs.length) throw new Error("没读到评论文字(页面结构可能变了)");
         const me = cfg().me, stance = panel.querySelector(".dyai-stance").value.trim();
         const vi = await videoInfo(item);
         // 还没展开的回复:AI 没看到,要明说,别让它装作都读过
-        const hidden = [...item.querySelectorAll("button")].reduce((n, b) => n + (/^展开(\d+)条回复/.exec(b.textContent.trim()) || [0, 0])[1] * 1, 0);
+        const expandBtns = [...item.querySelectorAll("button")].map(b => b.textContent.trim()).filter(t => /^展开|^查看更多/.test(t));
+        const hiddenN = expandBtns.reduce((n, t) => n + ((/^展开(\d+)条回复/.exec(t) || [0, 0])[1] * 1), 0);
+        const hidden = hiddenN ? `${hiddenN}条` : (expandBtns.length ? "更多" : "");
         const lastOther = msgs.map((m, i) => [m, i + 1]).filter(([m]) => !isMe(m.nick)).pop();
         const mine = msgs.filter(m => isMe(m.nick)).map(m => `- ${m.to ? `(回复 ${m.to})` : ""}${m.text}`).join("\n");
         const target = lastOther ? `第 ${lastOther[1]} 条,${lastOther[0].nick}${lastOther[0].to ? ` 回复 ${isMe(lastOther[0].to) ? "【我】" : lastOther[0].to}` : ""}:${lastOther[0].text}` : "";
@@ -454,7 +450,7 @@
             me ? `我的抖音昵称:${me}(下面对话里标【我】的就是我本人)` : "我的昵称没设置,默认要回应的是最后一条发言"
           ].filter(Boolean).join("\n"),
           `【这一楼的对话,按时间顺序】\n${threadText(msgs)}`,
-          hidden ? `【注意】这一楼还有 ${hidden} 条回复没有展开,你看不到它们。别假装知道它们说了什么,只根据上面已有的内容回应。` : "",
+          hidden ? `【注意】这一楼还有${hidden}回复没有展开,你看不到它们。别假装知道它们说了什么,只根据上面已有的内容回应。` : "",
           otherComments(item) ? `【评论区里其他人在聊的(帮你了解视频和大家的关注点)】\n${otherComments(item)}` : "",
           mine ? `【我在这一楼已经说过的话(保持立场一致,别重复)】\n${mine}` : "",
           target ? `【这次要回应的发言】${target}${msgs[msgs.length - 1] && isMe(msgs[msgs.length - 1].nick) ? "(但最后一条是我自己发的,所以是我接着补刀)" : ""}` : "",
