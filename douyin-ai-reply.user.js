@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.1.3
+// @version      1.2.0
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -19,7 +19,7 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   // ---------- 设置(存在油猴本地,不写进代码) ----------
-  const DEF = { apiKey: "", model: "deepseek-chat", baseUrl: "https://api.deepseek.com", me: "" };
+  const DEF = { apiKey: "", model: "deepseek-flash", baseUrl: "https://api.deepseek.com", me: "" };
   const cfg = () => ({
     apiKey: GM_getValue("apiKey", DEF.apiKey), model: GM_getValue("model", DEF.model),
     baseUrl: GM_getValue("baseUrl", DEF.baseUrl), me: GM_getValue("me", DEF.me)
@@ -34,7 +34,7 @@
   });
   GM_registerMenuCommand("设置模型 / 接口地址", () => {
     const c = cfg();
-    const m = prompt("模型(DeepSeek 用 deepseek-chat;Claude 用 claude-haiku-5-5):", c.model);
+    const m = prompt("模型(DeepSeek 用 deepseek-flash,能看图;Claude 用 claude-haiku-5-5):", c.model);
     if (m !== null) GM_setValue("model", m.trim() || DEF.model);
     const u = prompt("接口地址(DeepSeek: https://api.deepseek.com ;Claude: https://api.anthropic.com):", c.baseUrl);
     if (u !== null) GM_setValue("baseUrl", u.trim() || DEF.baseUrl);
@@ -151,14 +151,43 @@
     } catch (e) { return "搜索失败(" + String(e.message || e).slice(0, 60) + "),请凭已有知识回答,拿不准就别引用。"; }
   }
 
-  async function generate(userMsg, onPartial, onStatus) {
+  const VISION_NOTE = `
+
+【看图】对话里写成 [图片1]、[图片2] 这样带编号的,图片就附在这条消息的后面,编号一一对应,你能看到:把图里的文字和内容当作那个人说的话的一部分来理解,必要时在回复里点出图里的具体内容。只有写成 [图片](没有编号)的你才看不到。`;
+  const canSee = () => { const c = cfg(); return /anthropic\.com/.test(c.baseUrl) || (/deepseek\.com/.test(c.baseUrl) && /flash/i.test(c.model)); };
+
+  // 评论里的图片:用油猴的跨域请求取回原图 → 缩到长边 768 → 转成 jpeg 的 base64。取不到的图直接放弃,不影响其余
+  function gmBlob(url) {
+    return new Promise((resolve, reject) => GM_xmlhttpRequest({
+      method: "GET", url, responseType: "blob", timeout: 15000, headers: { Referer: "https://www.douyin.com/" },
+      onload: r => (r.status >= 200 && r.status < 300 && r.response) ? resolve(r.response) : reject(new Error(r.status)),
+      onerror: () => reject(new Error("net")), ontimeout: () => reject(new Error("timeout"))
+    }));
+  }
+  async function imgData(img) {
+    const src = img.currentSrc || img.src;
+    if (!src) return "";
+    if (src.startsWith("data:image/")) return src;
+    const bmp = await createImageBitmap(await gmBlob(src));
+    const k = Math.min(1, 768 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(bmp.width * k)); cv.height = Math.max(1, Math.round(bmp.height * k));
+    const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+    cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    if (bmp.close) bmp.close();
+    return cv.toDataURL("image/jpeg", 0.8);
+  }
+  const loadImages = els => Promise.all(els.map(async (img, i) => { try { return { n: i + 1, url: await imgData(img) }; } catch { return { n: i + 1, url: "" }; } }));
+
+  async function generate(userMsg, onPartial, onStatus, images) {
     const c = cfg();
+    const pics = (images || []).filter(i => i.url);
     if (!c.apiKey) throw new Error("还没填 API Key:点浏览器工具栏的油猴图标 → 本脚本 → 设置 API Key");
     const base = c.baseUrl.replace(/\/$/, "");
     if (/anthropic\.com/.test(base)) {
       const raw = await gmPost(base + "/v1/messages",
         { "content-type": "application/json", "x-api-key": c.apiKey, "anthropic-version": "2023-06-01" },
-        { model: c.model, max_tokens: 1200, stream: true, system: SYSTEM, messages: [{ role: "user", content: userMsg }] },
+        { model: c.model, max_tokens: 1200, stream: true, system: SYSTEM + (pics.length ? VISION_NOTE : ""), messages: [{ role: "user", content: pics.length ? [{ type: "text", text: userMsg }].concat(pics.flatMap(i => { const m = /^data:([^;]+);base64,(.*)$/.exec(i.url) || []; return [{ type: "text", text: `[图片${i.n}]` }, { type: "image", source: { type: "base64", media_type: m[1] || "image/jpeg", data: m[2] || "" } }]; })) : userMsg }] },
         onPartial ? t => onPartial(sseText(t, true)) : null);
       let text = sseText(raw, true);
       if (!text) text = (JSON.parse(raw).content || []).map(b => b.text || "").join("");
@@ -166,12 +195,23 @@
     }
     const headers = { "content-type": "application/json", authorization: "Bearer " + c.apiKey };
     const canSearch = /deepseek\.com/.test(base) && GM_getValue("search", true);
-    const messages = [{ role: "system", content: SYSTEM + (canSearch ? SEARCH_NOTE : "") }, { role: "user", content: userMsg }];
+    const content = pics.length ? [{ type: "text", text: userMsg }].concat(pics.flatMap(i => [{ type: "text", text: `[图片${i.n}]` }, { type: "image_url", image_url: { url: i.url } }])) : userMsg;
+    const messages = [{ role: "system", content: SYSTEM + (pics.length ? VISION_NOTE : "") + (canSearch ? SEARCH_NOTE : "") }, { role: "user", content }];
+    let lite = false;                                        // 接口拒绝图片/关思考参数(400)时,退回纯文字再试一次
+    const post = async (body, op) => {
+      try { return await gmPost(base + "/chat/completions", headers, body, op); }
+      catch (e) {
+        if (lite || !/接口返回 400/.test(String(e.message))) throw e;
+        lite = true; delete body.thinking; messages[1].content = userMsg;
+        return gmPost(base + "/chat/completions", headers, body, op);
+      }
+    };
     for (let round = 0; round < 3; round++) {
       const useTools = canSearch && round < 2;               // 最多搜两轮,第三轮必须给出回复
       const body = { model: c.model, max_tokens: 1200, stream: true, temperature: 1.0, messages };
+      if (/flash/i.test(c.model) && !lite) body.thinking = { type: "disabled" };   // 默认会先长时间思考,关掉更快更省
       if (useTools) body.tools = [SEARCH_TOOL];
-      const raw = await gmPost(base + "/chat/completions", headers, body, onPartial ? t => onPartial(sseParse(t, false).text) : null);
+      const raw = await post(body, onPartial ? t => onPartial(sseParse(t, false).text) : null);
       let r = sseParse(raw, false);
       if (!r.text && !r.calls.length) {                      // 服务器没有走流式:按一次性 JSON 解析
         const m = (JSON.parse(raw).choices || [{}])[0].message || {};
@@ -198,12 +238,12 @@
   const ITEM = '[data-e2e="comment-item"]';
 
   // 抖音的表情([泪奔]、[看]、emoji)和评论里的图片都是 <img>,innerText 读不到。临时把它们换成文字再读,读完立刻放回原样(同一个同步任务里,页面不会闪)
-  function itemText(item) {
+  function itemText(item, imgs) {
     const swaps = [];
     item.querySelectorAll("img").forEach(img => {
       const w = img.getBoundingClientRect().width, alt = (img.alt || "").trim();
       let t = "";
-      if (w >= 80) t = "[图片]";
+      if (w >= 80) t = imgs && imgs.length < 4 ? `[图片${imgs.push(img)}]` : "[图片]";   // 传了数组就给图编号并收集起来,最多 4 张
       else if (alt && w <= 24 && !alt.endsWith("头像") && (alt.startsWith("[") || /\p{Extended_Pictographic}/u.test(alt))) t = alt;   // 只换表情和 emoji,头像之类的说明文字不要
       if (!t || !img.parentNode) return;
       const node = document.createTextNode(t);
@@ -215,8 +255,8 @@
   }
 
   // innerText 结构:昵称 / (作者) / 正文 / (作者赞过) / "1月前·地区" / 点赞数 / 分享 / 回复 / (下一条的昵称…)
-  function parseThread(item) {
-    const lines = itemText(item).split("\n").map(s => s.trim()).filter(Boolean);
+  function parseThread(item, imgs) {
+    const lines = itemText(item, imgs).split("\n").map(s => s.trim()).filter(Boolean);
     const msgs = []; let buf = [], cur = null, afterTime = false, isAuthor = false, liked = false;
     for (const l of lines) {
       if (afterTime) {
@@ -374,6 +414,7 @@
 #dyai-panel .dyai-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;margin:0 -12px 6px;padding:10px 10px 4px 12px;background:var(--bg)}
 #dyai-panel .dyai-title{color:var(--fg);font-weight:600;white-space:nowrap}
 #dyai-panel .dyai-title::before{content:"●";color:var(--ac);font-size:8px;margin-right:7px;vertical-align:2px}
+#dyai-panel .dyai-to{flex:1;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mu)}
 #dyai-panel .dyai-tools{display:flex;flex:none;gap:2px}
 #dyai-panel .dyai-gear,#dyai-panel .dyai-x{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--mu);font-size:12px;line-height:1;cursor:pointer;transition:color .12s ease,background-color .12s ease}
 #dyai-panel .dyai-gear:hover,#dyai-panel .dyai-x:hover{color:var(--fg);background:var(--bg2)}
@@ -440,22 +481,31 @@
   const panel = document.createElement("div"); panel.id = "dyai-panel";
   document.body.append(btn, panel);
 
-  let curItem = null, panelItem = null, hideTimer = null, calm = false, lastX = -1, lastY = -1;
+  let curItem = null, curLeaf = null, curBlock = null, panelItem = null, panelLeaf = null, panelBlock = null, hideTimer = null, calm = false, lastX = -1, lastY = -1;
 
-  function placeBtn(item) {
-    const r = item.getBoundingClientRect();
+  // 一楼里每条发言(楼主 + 每条楼中楼)各有一个「回复」按钮。按钮所在、且只含这一个「回复」的最大一块,就是这条发言的整块区域
+  const leavesOf = item => [...item.querySelectorAll("span,div,button")].filter(e => e.children.length === 0 && /^回复(中)?$/.test(e.textContent.trim()));
+  function blockOf(leaf, item, leaves) {
+    let b = leaf;
+    while (b.parentElement && b.parentElement !== item && leaves.filter(l => b.parentElement.contains(l)).length === 1) b = b.parentElement;
+    return b;
+  }
+
+  function placeBtn(item, block) {
+    const r = (block || item).getBoundingClientRect(), ir = item.getBoundingClientRect();
     if (r.bottom < 0 || r.top > innerHeight) { btn.style.display = "none"; return; }
     btn.style.display = "block";
     btn.style.top = Math.max(r.top + 4, 4) + "px";
-    btn.style.left = Math.max(r.right - btn.offsetWidth - 10, 4) + "px";
+    btn.style.left = Math.max(ir.right - btn.offsetWidth - 10, 4) + "px";
   }
   function placePanel() {
     if (!panelItem || !panelItem.isConnected) return closePanel();
     const r = panelItem.getBoundingClientRect(), w = 320;
+    const top = (panelBlock && panelBlock.isConnected ? panelBlock : panelItem).getBoundingClientRect().top;
     let left = r.left - w - 8;
     if (left < 8) left = Math.min(r.right - w, innerWidth - w - 8);
     panel.style.left = left + "px";
-    panel.style.top = Math.min(Math.max(r.top, 8), innerHeight - 200) + "px";
+    panel.style.top = Math.min(Math.max(top, 8), innerHeight - 200) + "px";
   }
   let panelUrl = "";
   function closePanel() { panel.style.display = "none"; panelItem = null; hideBtn(); }
@@ -505,7 +555,15 @@
     if (e.target === btn || panel.contains(e.target)) { clearTimeout(hideTimer); return; }
     const item = e.target.closest && e.target.closest(ITEM);
     clearTimeout(hideTimer);
-    if (item) { if (item !== curItem || btn.style.display !== "block") { curItem = item; placeBtn(item); } }
+    if (item) {
+      // 鼠标在这一楼的哪一条发言上,按钮就跟到那一条
+      const leaves = leavesOf(item);
+      let leaf = null, block = null;
+      for (const l of leaves) { const b = blockOf(l, item, leaves); if (b.contains(e.target)) { leaf = l; block = b; break; } }
+      if (!leaf && item === curItem) { leaf = curLeaf; block = curBlock; }
+      if (!leaf && leaves[0]) { leaf = leaves[0]; block = blockOf(leaf, item, leaves); }
+      if (item !== curItem || leaf !== curLeaf || btn.style.display !== "block") { curItem = item; curLeaf = leaf; curBlock = block; placeBtn(item, block); }
+    }
     else hideTimer = setTimeout(() => { btn.style.display = "none"; }, 400);
   }, true);
   addEventListener("scroll", e => {
@@ -513,13 +571,13 @@
     if (panel.style.display === "block") placePanel();
   }, true);
   addEventListener("resize", () => { if (panel.style.display === "block") placePanel(); });
-  btn.addEventListener("click", e => { e.stopPropagation(); if (curItem) openPanel(curItem); });
+  btn.addEventListener("click", e => { e.stopPropagation(); if (curItem) openPanel(curItem, curLeaf, curBlock); });
 
-  function openPanel(item) {
-    panelItem = item; panelUrl = location.href;
+  function openPanel(item, leaf, block) {
+    panelItem = item; panelLeaf = leaf; panelBlock = block; panelUrl = location.href;
     panel.innerHTML = `
       <div class="dyai-head">
-        <span class="dyai-title">AI 怼</span>
+        <span class="dyai-title">AI 怼</span><span class="dyai-to"></span>
         <span class="dyai-tools"><button type="button" class="dyai-gear" title="设置" aria-label="设置">⚙</button><button type="button" class="dyai-x" title="关闭(Esc)" aria-label="关闭">✕</button></span>
       </div>
       <div class="dyai-set">
@@ -559,7 +617,8 @@
       }
       go.disabled = true; out.innerHTML = '<div class="dyai-msg"><span class="dyai-sp">⠋</span>读取整楼对话…</div>';
       try {
-        const msgs = parseThread(item);
+        const imgEls = canSee() ? [] : null;
+        const msgs = parseThread(item, imgEls);
         if (!msgs.length) throw new Error("没读到评论文字(页面结构可能变了)");
         const me = cfg().me, stance = panel.querySelector(".dyai-stance").value.trim();
         const vi = await videoInfo(item);
@@ -567,10 +626,20 @@
         const expandBtns = [...item.querySelectorAll("button")].map(b => b.textContent.trim()).filter(t => /^展开|^查看更多/.test(t));
         const hiddenN = expandBtns.reduce((n, t) => n + ((/^展开(\d+)条回复/.exec(t) || [0, 0])[1] * 1), 0);
         const hidden = hiddenN ? `${hiddenN}条` : (expandBtns.length ? "更多" : "");
+        // 要回应哪一条:优先用鼠标点的那一条(「回复」按钮数量和发言数量对得上才可信),否则退回"最后一条不是我说的"
+        const leaves = leavesOf(item), picked = panelLeaf && leaves.length === msgs.length ? leaves.indexOf(panelLeaf) : -1;
         const lastOther = msgs.map((m, i) => [m, i + 1]).filter(([m]) => !isMe(m.nick)).pop();
-        const targetIdx = lastOther ? lastOther[1] - 1 : msgs.length - 1;
+        const targetIdx = picked >= 0 ? picked : lastOther ? lastOther[1] - 1 : msgs.length - 1;
+        const tm = msgs[targetIdx];
+        const toEl = panel.querySelector(".dyai-to"); if (toEl) toEl.textContent = "→ " + tm.nick;
+        let pics = [];
+        if (imgEls && imgEls.length) {
+          out.firstChild.lastChild.textContent = "读取图片…";
+          pics = await loadImages(imgEls);
+        }
+        const lostPics = pics.filter(p => !p.url).map(p => "图片" + p.n);
         const mine = msgs.filter(m => isMe(m.nick)).map(m => `- ${m.to ? `(回复 ${m.to})` : ""}${m.text}`).join("\n");
-        const target = lastOther ? `第 ${lastOther[1]} 条,${lastOther[0].nick}${lastOther[0].to ? ` 回复 ${isMe(lastOther[0].to) ? "【我】" : lastOther[0].to}` : ""}:${lastOther[0].text}` : "";
+        const target = `第 ${targetIdx + 1} 条,${isMe(tm.nick) ? "【我】" : tm.nick}${tm.to ? ` 回复 ${isMe(tm.to) ? "【我】" : tm.to}` : ""}:${tm.text}`;
         const userMsg = [
           "【背景】\n" + [
             vi.author ? `视频作者:${vi.author}` : "",
@@ -580,16 +649,17 @@
             vi.date ? `发布时间:${vi.date}` : "",
             vi.summary ? `抖音AI生成的视频内容总结:${vi.summary}` : "",
             vi.chapters ? `视频分章节要点(时间点 标题:内容):\n${vi.chapters}` : "",
-            me ? `我的抖音昵称:${me}(下面对话里标【我】的就是我本人)` : "我的昵称没设置,默认要回应的是最后一条发言"
+            me ? `我的抖音昵称:${me}(下面对话里标【我】的就是我本人)` : "我的昵称没设置,分不清哪句是我说的,以【这次要回应的发言】为准"
           ].filter(Boolean).join("\n"),
           `【这一楼的对话,按时间顺序】\n${threadText(msgs)}`,
           hidden ? `【注意】这一楼还有${hidden}回复没有展开,你看不到它们。别假装知道它们说了什么,只根据上面已有的内容回应。` : "",
           otherComments(item) ? `【评论区里其他人在聊的(帮你了解视频和大家的关注点)】\n${otherComments(item)}` : "",
           mine ? `【我在这一楼已经说过的话(保持立场一致,别重复)】\n${mine}` : "",
-          target ? `【这次要回应的发言】${target}${msgs[msgs.length - 1] && isMe(msgs[msgs.length - 1].nick) ? "(但最后一条是我自己发的,所以是我接着补刀)" : ""}` : "",
+          lostPics.length ? `【注意】${lostPics.join("、")} 没能加载,你看不到,别猜图里画了什么。` : "",
+          `【这次要回应的发言】${target}${isMe(tm.nick) ? "(这条是我自己发的,所以这次是我顺着它接着往下说、补刀)" : picked < 0 && isMe(msgs[msgs.length - 1].nick) ? "(但最后一条是我自己发的,所以是我接着补刀)" : ""}`,
           `风格:${style}`,
           stance ? `我想表达的意思:${stance}` : "",
-          "请按【这次要回应的发言】写 3 条回复,风格见上;如果最后一条是我自己发的,就写我接下来补刀的话。同时检查我说过的话有没有错,有把握的才写进 note。"
+          "请按【这次要回应的发言】写 3 条回复(整楼对话都要参考,别只盯着那一条),风格见上;如果那条是我自己发的,就写我接下来补刀的话。同时检查我说过的话有没有错,有把握的才写进 note。"
         ].filter(Boolean).join("\n\n");
         out.innerHTML = '<div class="dyai-msg"><span class="dyai-sp">⠋</span>生成中…</div><div></div><div></div><div></div>';
         const [msgEl, tw, nw, rw] = out.children;
@@ -614,7 +684,7 @@
           });
           while (rw.children.length > p.replies.length) rw.lastElementChild.remove();
         };
-        const res = await generate(userMsg, text => show(partialView(text)), st => { if (msgEl.isConnected) msgEl.lastChild.textContent = st; });
+        const res = await generate(userMsg, text => show(partialView(text)), st => { if (msgEl.isConnected) msgEl.lastChild.textContent = st; }, pics);
         done = true; show(res); msgEl.remove();
         const ae = document.activeElement;
         if (ae && ae.tagName === "INPUT" && panel.contains(ae)) ae.blur();   // 让数字键 1/2/3 能直接选
