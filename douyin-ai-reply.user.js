@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.0
+// @version      1.0.1
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -138,9 +138,10 @@
     return t.length > 6000 ? t.split("\n")[0] + "\n(中间略)\n" + t.slice(-5500) : t;
   }
 
-  // 推荐流里页面上同时挂着好几个视频,所以要从"这条评论所属的那个视频"里取,不能取页面上第一个
+  // 推荐流里页面上同时挂着好几个视频,而且"当前视频"的标记在切视频时会滞后(评论已经是新视频的了,标记还留在上一个)。
+  // 所以不看标记,直接找"这条评论所在的那一格视频"(评论列表就挂在它自己的视频格子里)。找不到才退回到标记。
   function videoRoot(item) {
-    return (item && item.closest('[data-e2e="feed-active-video"]')) || document.querySelector('[data-e2e="feed-active-video"]') || (item && item.closest('[data-e2e="modal-video-container"]')) || document;
+    return (item && (item.closest("[data-e2e-vid]") || item.closest('[data-e2e="feed-active-video"]'))) || document.querySelector('[data-e2e="feed-active-video"]') || (item && item.closest('[data-e2e="modal-video-container"]')) || document;
   }
   function videoAuthor(item) {
     const a = videoRoot(item).querySelector('[data-e2e="feed-video-nickname"]');
@@ -155,7 +156,8 @@
   // 当前视频的 aweme_id:推荐流/弹窗里 feed-active-video 带 data-e2e-vid;再不行用网址里的 modal_id
   function videoId(item) {
     const r = videoRoot(item);
-    return (r.getAttribute && r.getAttribute("data-e2e-vid")) || new URL(location.href).searchParams.get("modal_id") || "";
+    const byClass = (String(r.className || "").match(/video_(\d+)/) || [])[1];
+    return (r.getAttribute && r.getAttribute("data-e2e-vid")) || byClass || new URL(location.href).searchParams.get("modal_id") || "";
   }
   const mmss = ms => { const t = Math.floor((+ms || 0) / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
   const infoCache = new Map();
