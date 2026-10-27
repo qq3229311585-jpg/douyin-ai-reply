@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         抖音评论 AI 怼
 // @namespace    local.douyin-ai-reply
-// @version      1.0.7
+// @version      1.0.9
 // @description  抖音网页版评论区悬浮「AI 怼」按钮:读完整楼对话,生成回怼,点选后填入回复框(不会自动发送)
 // @match        https://www.douyin.com/*
 // @grant        GM_xmlhttpRequest
@@ -45,16 +45,16 @@
 
 【读懂】你会拿到视频背景和一整楼的对话原文(按顺序编号,写成"n. 发言人 回复 某某:内容"的,是发言人在对某某说话;如果正文一开头就是一个人名,那多半也是他在回复这个人)。对话里标【我】的就是用户本人,标【视频作者】的是发视频的人,其余是路人;别把我说的话当成对方说的。必须把整楼从头到尾通读,不能只盯着最后一两句:弄清每个人在回谁、争论怎么一步步发展、我前面已经表过什么态。
 
-【回复】按"风格"那一行写 3 条回复,每条 40 字以内,口语化,像真人在评论区手打的,不要书面腔,不要解释,不要带引号。要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;要接住"这次要回应的发言",紧扣这个视频和这一楼的具体细节,不要写放在哪都能用的空话。风格的含义:
-- 狠辣毒舌:狠、准,专挑逻辑漏洞、前后矛盾、双标和外行硬装内行,一针见血,有杀伤力。
-- 阴阳怪气:话里有话,表面客气、实则讽刺。
-- 幽默调侃:用梗和玩笑化解并反击,轻松好笑。
+【回复】按"风格"那一行写 3 条回复,每条 50 字以内,口语化,像真人在评论区手打的,不要书面腔,不要解释,不要带引号。每条回复都必须有"理":先点中对方具体说过的某句话或某个前提,再用一个事实、数据、反例、类比或推理把它拆掉,让人看完觉得"对,这里确实站不住",而不是只有情绪和嘲讽。只骂不讲理的、空喊口号的不要写。三条要用不同的打法(例如:抓逻辑漏洞或前后矛盾 / 拿事实或数据反驳 / 用类比或反问归谬),不要三条说同一个意思。引用的事实和数字必须是你有十足把握的,没把握就改用逻辑或类比,绝不能编数据、编出处,不然我会被对方当场打脸。要和我前面的立场一致并往前推进,别重复我已经说过的话,别漏掉别人对我说的任何一句;要接住"这次要回应的发言",紧扣这个视频和这一楼的具体细节,不要写放在哪都能用的空话。风格的含义:
+- 狠辣毒舌:狠、准,而且狠在道理上:专挑逻辑漏洞、前后矛盾、双标和外行硬装内行,一针见血,有杀伤力;语气可以冲,但每句都要落在对方具体的错处上。
+- 阴阳怪气:话里有话,表面客气、实则讽刺,但讽刺的点必须是对方真正的破绽。
+- 幽默调侃:用梗和玩笑化解并反击,轻松好笑,笑点要建立在对方的逻辑问题上。
 - 以理服人:不骂不讽,心平气和,用事实和逻辑把道理讲透,让旁观的人觉得你有理。这个风格不要写成嘲讽。
 底线(为了不被举报封号):只打观点、言行和水平,不骂脏话,不攻击对方的地域、性别、外貌、疾病、家人、民族等身份特征,不威胁,不人肉。
 
 【提醒我】先核对我(标【我】的)前面说的话和我这次想表达的意思:如果有事实错误、说错的数据或典故、容易被对方抓住的漏洞,写进 note,并且回复里不要再重复这个错误,也别把对方说对的地方硬说成错的。如果有值得我知道的相关背景知识(能扩充我的知识面,也能让回复更有底气),也可以写进 note。只在你有把握时才写;没有就让 note 为空字符串,不要凑数。note 要简短(60 字内),口气像朋友提醒,别说教。
 
-分析时做批判性检查:对方的前提是什么?有没有偷换概念、稻草人、以偏概全、双标、自相矛盾?
+分析时做批判性检查:对方的前提是什么?结论是怎么推出来的,哪一步不成立?有没有偷换概念、稻草人、以偏概全、双标、自相矛盾?strategy 里要写清楚三条回复各自用什么理由、打哪一句。
 
 只输出一个 JSON 对象,所有字段的值都用字符串(只有 replies 是字符串数组),按这个顺序:{"thread":"…","opponent":"…","weak":"…","stance":"…","strategy":"…","note":"…","topic":"…","replies":["…","…","…"]}。thread/opponent/weak/stance/strategy 是你的分析(不给用户看);note 是给我的提醒;topic 是一句话说明视频讲什么 + 这一楼在争什么(30字内)。不要任何别的文字。`;
 
@@ -370,7 +370,7 @@
   const panel = document.createElement("div"); panel.id = "dyai-panel";
   document.body.append(btn, panel);
 
-  let curItem = null, panelItem = null, hideTimer = null;
+  let curItem = null, panelItem = null, hideTimer = null, calm = false, lastX = -1, lastY = -1;
 
   function placeBtn(item) {
     const r = item.getBoundingClientRect();
@@ -388,14 +388,17 @@
     panel.style.top = Math.min(Math.max(r.top, 8), innerHeight - 200) + "px";
   }
   let panelUrl = "";
-  function closePanel() { panel.style.display = "none"; panelItem = null; }
+  function closePanel() { panel.style.display = "none"; panelItem = null; hideBtn(); }
+  function hideBtn() { btn.style.display = "none"; calm = true; }
 
   // ---- 自动收回:点面板外面 / 按 Esc / 换了视频 / 评论区关了 / 那条评论滚出视野 ----
   document.addEventListener("mousedown", e => {
-    if (panel.style.display === "block" && !panel.contains(e.target) && e.target !== btn) closePanel();
+    if (panel.contains(e.target) || e.target === btn) return;
+    if (panel.style.display === "block") closePanel(); else hideBtn();
   }, true);
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && panel.style.display === "block") { closePanel(); e.stopPropagation(); return; }
+    if (e.key === "Enter" && !e.isComposing && e.target && e.target.isContentEditable && !panel.contains(e.target)) { if (panel.style.display === "block") closePanel(); else hideBtn(); }
     // 数字键 1/2/3 直接选第几条回复(焦点在输入框里时不抢,免得打不了字)
     if (panel.style.display !== "block" || e.metaKey || e.ctrlKey || e.altKey || !/^[1-9]$/.test(e.key)) return;
     const t = e.target;
@@ -426,7 +429,6 @@
   ["keydown", "keyup", "keypress"].forEach(t => panel.addEventListener(t, e => e.stopPropagation()));
 
   // 按钮只在鼠标真的移到某条评论上时才出现;一滚动就立刻消失,滚完也不会自己冒出来(浏览器滚完会补发一次原地的鼠标事件,要忽略)
-  let calm = false, lastX = -1, lastY = -1;
   document.addEventListener("mousemove", e => {
     if (calm) { if (e.clientX === lastX && e.clientY === lastY) return; calm = false; }
     lastX = e.clientX; lastY = e.clientY;
