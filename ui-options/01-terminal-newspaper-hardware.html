@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 怼 · 终端 / 报纸 / 硬件 各三版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--mono:"SF Mono",ui-monospace,Menlo,Monaco,"PingFang SC",monospace;--serif:"Songti SC","Noto Serif SC",Georgia,serif;--sans:-apple-system,"SF Pro Text","PingFang SC",sans-serif}
+body{background:#0c0c10;color:#ccc;font:13px/1.5 var(--sans);padding:28px}
+h1{font-size:16px;color:#fff;margin-bottom:4px}.sub{color:#8a8a94;font-size:12px;margin-bottom:26px}
+.row{margin-bottom:34px}.row>h2{font-size:13px;color:#fff;margin-bottom:12px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(3,372px);gap:22px}
+.cap{margin-bottom:8px;font-size:12px;color:#9a9aa4;min-height:34px}.cap b{color:#fff;font-size:13px}
+.stage{padding:22px 26px 28px;border-radius:14px;background:linear-gradient(160deg,#1c1e2b,#12131b);min-height:360px}
+.p{width:320px;position:relative;overflow:hidden}
+.r{cursor:pointer;user-select:none}
+.tools span{cursor:pointer}
+.ld{min-height:24px}
+@keyframes blink{50%{opacity:0}}@keyframes pulse{50%{opacity:.25}}@keyframes fill{to{background-size:100% 100%}}@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.in{animation:rise .28s ease-out both}
+.caret{display:inline-block;width:.55em;height:1.1em;vertical-align:-.18em;animation:blink 1.05s steps(1) infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ================= T1 现代 TUI ================= */
+.T1{font:12.5px/1.65 var(--mono);background:#141416;color:#d6d6da;border:1px solid #2b2b30;border-radius:10px;padding:10px 12px 12px;box-shadow:0 14px 34px rgba(0,0,0,.55)}
+.T1 .hd{display:flex;justify-content:space-between;color:#74747c;margin-bottom:8px}
+.T1 .hd b{color:#d6d6da;font-weight:600}.T1 .hd b::before{content:"●";color:#7dcfff;font-size:8px;margin-right:7px;vertical-align:2px}
+.T1 .tools span{margin-left:12px}.T1 .tools span:hover{color:#fff}
+.T1 .inp{display:flex;gap:8px;padding:6px 0 8px;border-bottom:1px solid #26262b}.T1 .inp i{font-style:normal;color:#7dcfff}.T1 .inp span{color:#5d5d66}.T1 .caret{background:#7dcfff}
+.T1 .ctl{display:flex;justify-content:space-between;align-items:center;margin:9px 0 4px}
+.T1 .seg{display:flex;gap:12px;color:#5d5d66}.T1 .seg span{cursor:pointer}.T1 .seg .on{color:#7dcfff}.T1 .seg span:hover{color:#d6d6da}
+.T1 .go{border:1px solid #3a3a42;border-radius:6px;padding:0 10px;cursor:pointer;color:#d6d6da;transition:background .12s,color .12s,transform .08s}
+.T1 .go:hover{background:#7dcfff;border-color:#7dcfff;color:#141416}.T1 .go:active{transform:translateY(1px)}
+.T1 .topic{color:#74747c;font-size:12px;margin:10px 0 6px}
+.T1 .r{display:grid;grid-template-columns:22px 1fr;padding:5px 8px;border-left:2px solid transparent;color:#bdbdc4;transition:background .12s,color .12s,border-color .12s}
+.T1 .r::before{content:attr(data-n);color:#5d5d66}
+.T1 .r:hover,.T1 .r.h{background:#1d1d21;border-left-color:#7dcfff;color:#fff}.T1 .r:hover::before,.T1 .r.h::before{content:"›";color:#7dcfff}
+.T1 .ld{color:#74747c;padding:6px 8px}.T1 .sp{color:#7dcfff}
+
+/* ================= T2 荧光 CRT ================= */
+.T2{font:12.5px/1.7 var(--mono);color:#e8a200;background:#150e02;border:2px solid #2e2005;border-radius:16px;padding:12px 15px 15px;box-shadow:0 0 0 1px #000,0 16px 36px rgba(0,0,0,.6),inset 0 0 60px rgba(0,0,0,.7)}
+.T2::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0 1px,transparent 1px 3px)}
+.T2 .hd{display:flex;justify-content:space-between;color:#ffc233;text-shadow:0 0 8px rgba(255,176,0,.5);letter-spacing:.14em;padding-bottom:7px;margin-bottom:10px;border-bottom:1px solid #3a2800}
+.T2 .tools span{margin-left:12px;color:#8a6410}.T2 .tools span:hover{color:#ffd066}
+.T2 .inp{color:#7d5a10}.T2 .inp i{font-style:normal;color:#e8a200}.T2 .caret{background:#ffc233;box-shadow:0 0 8px rgba(255,176,0,.7)}
+.T2 .ctl{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+.T2 .ctl .lab{color:#7d5a10}.T2 .cycle{cursor:pointer;color:#ffd066}
+.T2 .go{cursor:pointer;color:#ffd066;padding:0 6px;transition:background .1s,color .1s}.T2 .go:hover{background:#e8a200;color:#150e02}
+.T2 .topic{color:#7d5a10;margin:8px 0 4px}
+.T2 .r{display:flex;gap:10px;padding:1px 6px;margin:1px -6px;color:#e8a200}.T2 .r::before{content:"0" attr(data-n);color:#7d5a10}
+.T2 .r:hover,.T2 .r.h{background:#e8a200;color:#150e02}.T2 .r:hover::before,.T2 .r.h::before{color:#150e02}
+.T2 .ld{color:#e8a200}.T2 .bar{display:inline-block;width:90px;height:9px;border:1px solid #e8a200;vertical-align:-1px;margin-left:6px;background:linear-gradient(#e8a200,#e8a200) no-repeat;background-size:0 100%;animation:fill 1.1s steps(10) forwards}
+
+/* ================= T3 裸 shell 日志 ================= */
+.T3{font:12.5px/1.75 var(--mono);background:#0b0b0b;color:#cfcfcf;border:1px solid #1d1d1d;border-radius:6px;padding:14px 16px 16px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+.T3 .ln{display:flex;gap:8px}.T3 .ln i{font-style:normal;color:#5af78e}.T3 .dim{color:#5f5f5f}
+.T3 .tools{position:absolute;right:14px;top:10px;color:#5f5f5f}.T3 .tools span{margin-left:10px}.T3 .tools span:hover{color:#fff}
+.T3 .caret{background:#5af78e}
+.T3 .cycle{cursor:pointer;color:#e6e6e6;border-bottom:1px dotted #5f5f5f}
+.T3 .go{cursor:pointer;color:#5af78e;margin-top:2px;display:inline-block}.T3 .go:hover{text-decoration:underline;text-underline-offset:3px}
+.T3 .topic{color:#5f5f5f;margin:10px 0 4px}.T3 .topic::before{content:"# "}
+.T3 .r{display:flex;gap:10px;padding:1px 0;color:#bdbdbd}.T3 .r::before{content:attr(data-n);color:#5f5f5f;width:10px}
+.T3 .r:hover,.T3 .r.h{color:#fff}.T3 .r:hover::before,.T3 .r.h::before{content:"→";color:#5af78e}
+.T3 .ld{color:#5f5f5f}.T3 .sp{color:#5af78e}
+
+/* ================= N1 大报版 ================= */
+.N1{background:#f6f1e6;color:#201c16;padding:16px 20px 18px;font-family:var(--sans);box-shadow:0 14px 34px rgba(50,35,10,.3)}
+.N1 .hd{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #201c16;padding-bottom:7px;margin-bottom:12px}
+.N1 .hd b{font:700 17px var(--serif);letter-spacing:.08em}.N1 .tools{color:#9b917e;font-size:12px}.N1 .tools span{margin-left:10px}.N1 .tools span:hover{color:#201c16}
+.N1 .inp{border-bottom:1px solid #cfc5ae;padding:3px 0 7px;color:#a39985;font-size:12px}
+.N1 .ctl{display:flex;justify-content:space-between;align-items:center;margin:11px 0 14px;font-size:12px;color:#6c6252}
+.N1 .cycle{cursor:pointer;color:#201c16;border-bottom:1px solid #201c16}
+.N1 .go{background:#201c16;color:#f6f1e6;padding:4px 14px;border-radius:2px;cursor:pointer;transition:background .15s,transform .08s}.N1 .go:hover{background:#b3261e}.N1 .go:active{transform:translateY(1px)}
+.N1 .topic{font:italic 12.5px/1.7 var(--serif);color:#7b705d;margin-bottom:12px}
+.N1 .r{font:15.5px/1.7 var(--serif);padding:6px 0;position:relative;transition:padding .18s ease}
+.N1 .r::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;background:#b3261e;opacity:0;transition:opacity .15s}
+.N1 .r:hover,.N1 .r.h{padding-left:13px}.N1 .r:hover::before,.N1 .r.h::before{opacity:1}
+.N1 .ld{font:italic 13px var(--serif);color:#7b705d}.N1 .ld::after{content:"…";animation:blink 1s steps(1) infinite}
+
+/* ================= N2 杂志摘引 ================= */
+.N2{background:#fbfaf6;color:#111;padding:16px 22px 20px;font-family:var(--sans);box-shadow:0 14px 34px rgba(0,0,0,.35)}
+.N2 .hd{display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.24em;margin-bottom:14px}.N2 .tools{color:#aaa;font-weight:400;letter-spacing:0}.N2 .tools span{margin-left:10px}.N2 .tools span:hover{color:#111}
+.N2 .inp{font-size:12px;color:#aaa;padding-bottom:6px;border-bottom:1px solid #111}
+.N2 .ctl{display:flex;justify-content:space-between;align-items:center;margin:12px 0 16px}
+.N2 .cycle{cursor:pointer;font-size:11.5px;border:1px solid #111;border-radius:20px;padding:1px 12px}
+.N2 .go{cursor:pointer;font-size:11.5px;background:#111;color:#fbfaf6;border-radius:20px;padding:2px 16px;transition:background .15s,transform .08s}.N2 .go:hover{background:#b3261e}.N2 .go:active{transform:scale(.96)}
+.N2 .topic{font-size:11px;font-weight:700;letter-spacing:.06em;color:#b3261e;margin-bottom:12px;line-height:1.6}
+.N2 .r{position:relative;padding-left:30px;margin-bottom:16px;font:17px/1.6 var(--serif)}
+.N2 .r::before{content:"\201C";position:absolute;left:0;top:-4px;font:700 40px/1 Georgia,serif;color:#b3261e}
+.N2 .r span{background:linear-gradient(transparent 68%,transparent 68%);transition:background .15s}
+.N2 .r:hover span,.N2 .r.h span{background:linear-gradient(transparent 68%,#ffd7d2 68%)}
+.N2 .ld{font:italic 14px var(--serif);color:#999}.N2 .ld::after{content:"…";animation:blink 1s steps(1) infinite}
+
+/* ================= N3 瑞士网格 ================= */
+.N3{background:#f2f1ec;color:#111;border-top:6px solid #111;padding:12px 18px 16px;font-family:var(--sans);box-shadow:0 14px 34px rgba(0,0,0,.35)}
+.N3 .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.N3 .hd b{font-size:16px;font-weight:800;letter-spacing:-.01em}.N3 .tools{color:#999;font-size:12px}.N3 .tools span{margin-left:10px}.N3 .tools span:hover{color:#111}
+.N3 .inp{font-size:12px;color:#999;padding:6px 0;border-top:1px solid #111;border-bottom:1px solid #111}
+.N3 .ctl{display:flex;justify-content:space-between;align-items:center;margin:10px 0 12px}
+.N3 .seg{display:flex;gap:12px;font-size:12px;color:#999}.N3 .seg span{cursor:pointer}.N3 .seg .on{color:#111;font-weight:700;border-bottom:2px solid #e63312}
+.N3 .go{background:#e63312;color:#fff;font-weight:700;font-size:12px;padding:5px 16px;cursor:pointer;transition:background .12s,transform .08s}.N3 .go:hover{background:#111}.N3 .go:active{transform:translateY(1px)}
+.N3 .topic{font-size:12px;font-weight:500;color:#555;line-height:1.55;margin-bottom:8px}
+.N3 .r{display:grid;grid-template-columns:34px 1fr;gap:4px;border-top:1px solid #111;padding:9px 6px 9px 0;font-size:14px;font-weight:500;line-height:1.5;transition:background .12s,color .12s,padding .12s}
+.N3 .r::before{content:attr(data-n);font-size:26px;line-height:1;font-weight:800;color:#e63312;letter-spacing:-.04em}
+.N3 .r:hover,.N3 .r.h{background:#e63312;color:#fff;padding-left:8px}.N3 .r:hover::before,.N3 .r.h::before{color:#fff}
+.N3 .ld{font-size:12px;color:#777;padding:8px 0;border-top:1px solid #111}.N3 .ld::after{content:"…";animation:blink 1s steps(1) infinite}
+
+/* ================= 硬件通用 ================= */
+.H .lab{font-size:9px;letter-spacing:.2em;text-transform:uppercase;margin:9px 0 4px}
+.H .seg{position:relative;display:grid;grid-template-columns:repeat(4,1fr);--i:3}
+.H .seg span{position:relative;z-index:1;text-align:center;cursor:pointer;transition:color .2s}
+.H .seg::before{content:"";position:absolute;top:2px;bottom:2px;left:2px;width:calc((100% - 4px)/4);transform:translateX(calc(var(--i)*100%));transition:transform .26s cubic-bezier(.3,1.45,.5,1)}
+.H .led{display:inline-block;width:9px;height:9px;border-radius:50%}
+.H.loading .led{animation:pulse .6s ease-in-out infinite}
+.H .tools{display:flex;gap:10px}.H .tools span{cursor:pointer;opacity:.6}.H .tools span:hover{opacity:1}
+.H .caret{vertical-align:-.15em}
+
+/* H1 TE 铝灰 + 黑屏橙字 */
+.H1{background:linear-gradient(#e6e6e2,#d2d2ce);border:1px solid #a3a39f;border-radius:14px;padding:12px 14px 16px;box-shadow:inset 0 1px 0 #fff,0 14px 30px rgba(0,0,0,.3);color:#222;font:11px/1.45 var(--mono)}
+.H1 .hd{display:flex;justify-content:space-between;align-items:center;font-weight:700;letter-spacing:.12em}.H1 .hd b{display:flex;align-items:center;gap:8px}
+.H1 .led{background:#ff5a1f;box-shadow:0 0 6px #ff5a1f}.H1 .lab{color:#85857f}
+.H1 .lcd{background:#0c0c0d;color:#e9e9e9;border-radius:6px;padding:7px 10px;box-shadow:inset 0 2px 5px rgba(0,0,0,.6),0 1px 0 #fff}
+.H1 .lcd .ph{color:#6e6e72}.H1 .caret{background:#ff5a1f}
+.H1 .seg{background:#bdbdb8;border-radius:8px;padding:2px;box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}.H1 .seg span{padding:5px 0;color:#6d6d68}.H1 .seg::before{background:#f4f4f1;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.35)}.H1 .seg .on{color:#222;font-weight:700}
+.H1 .go{margin:12px 0 2px;height:40px;border-radius:10px;background:linear-gradient(#ff7338,#ff5a1f 55%,#e84d14);color:#fff;font-weight:700;letter-spacing:.3em;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 0 #a93a0c,0 7px 12px rgba(0,0,0,.25);transition:transform .08s,box-shadow .08s}
+.H1 .go:active{transform:translateY(2px);box-shadow:0 1px 0 #a93a0c,0 3px 6px rgba(0,0,0,.25)}
+.H1 .r{display:flex;gap:10px;padding:2px 6px;margin:0 -6px;border-radius:3px;color:#d8d8d8;font-size:12px;line-height:1.55}.H1 .r::before{content:attr(data-n);color:#ff5a1f}
+.H1 .r:hover,.H1 .r.h{background:#ff5a1f;color:#0c0c0d}.H1 .r:hover::before,.H1 .r.h::before{color:#0c0c0d}
+.H1 .ld{color:#ff5a1f;animation:pulse .7s ease-in-out infinite}
+
+/* H2 Braun 暖米色 圆键 */
+.H2{background:#e9e2d2;border:1px solid #bdb298;border-radius:10px;padding:14px 16px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 14px 30px rgba(60,40,10,.3);color:#3b362b;font:11px/1.45 var(--sans)}
+.H2 .hd{display:flex;justify-content:space-between;align-items:center}.H2 .hd b{font-size:13px;letter-spacing:.06em;display:flex;align-items:center;gap:8px}
+.H2 .led{width:8px;height:8px;background:#6aa84f;box-shadow:0 0 5px #6aa84f}.H2 .lab{color:#8c8168;font-weight:600}
+.H2 .lcd{background:#cdd2bf;border:1px solid #9aa085;border-radius:4px;padding:7px 10px;box-shadow:inset 0 2px 4px rgba(0,0,0,.2);font:12px/1.5 var(--mono);color:#2c3323}.H2 .lcd .ph{color:#7d846a}.H2 .caret{background:#2c3323}
+.H2 .seg{display:flex;justify-content:space-between;--i:3}.H2 .seg::before{display:none}
+.H2 .seg span{width:44px;height:44px;border-radius:50%;background:#f8f4ea;border:1px solid #c3b89f;box-shadow:0 3px 0 #bcb094,0 4px 6px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;color:#6b6350;transition:transform .08s,box-shadow .08s,background .15s,color .15s}
+.H2 .seg span.on{transform:translateY(3px);box-shadow:0 0 0 #bcb094,inset 0 2px 4px rgba(0,0,0,.4);background:#3b362b;color:#f8f4ea;border-color:#3b362b}
+.H2 .go{margin:14px 0 4px;height:40px;border-radius:8px;background:#ea5a14;color:#fff;font-weight:700;letter-spacing:.35em;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 0 #a93c07,0 6px 8px rgba(0,0,0,.2);transition:transform .08s,box-shadow .08s}
+.H2 .go:active{transform:translateY(3px);box-shadow:0 0 0 #a93c07}
+.H2 .r{display:flex;gap:9px;align-items:flex-start;margin-top:5px;padding:6px 9px;background:#cdd2bf;border:1px solid #9aa085;border-radius:4px;box-shadow:inset 0 2px 4px rgba(0,0,0,.18);font:12.5px/1.5 var(--sans);color:#2c3323;transition:background .12s,color .12s}
+.H2 .r::before{content:attr(data-n);flex:none;width:17px;height:17px;border-radius:50%;background:#3b362b;color:#f8f4ea;font-size:10px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.H2 .r:hover,.H2 .r.h{background:#2c3323;color:#dfe8c8}.H2 .ld{color:#2c3323;font:12px var(--mono);animation:pulse .7s ease-in-out infinite}
+
+/* H3 深色机器 */
+.H3{background:linear-gradient(#37383d,#27282c);border:1px solid #101012;border-radius:8px;padding:12px 14px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 16px 34px rgba(0,0,0,.6);color:#bfbfc4;font:10.5px/1.45 var(--mono)}
+.H3 .hd{display:flex;justify-content:space-between;align-items:center;letter-spacing:.16em}.H3 .hd b{color:#e8e8ea;display:flex;align-items:center;gap:8px}
+.H3 .led{background:#ff3b1f;box-shadow:0 0 8px #ff3b1f}.H3 .lab{color:#7a7a82}
+.H3 .lcd{background:#1b1004;border:1px solid #0b0602;border-radius:3px;padding:7px 10px;box-shadow:inset 0 0 14px rgba(0,0,0,.8);color:#ffb000;text-shadow:0 0 6px rgba(255,176,0,.35);font-size:12px}.H3 .lcd .ph{color:#7a5a12;text-shadow:none}.H3 .caret{background:#ffb000}
+.H3 .seg{gap:6px;display:grid;--i:3}.H3 .seg::before{display:none}
+.H3 .seg span{height:24px;border-radius:3px;background:linear-gradient(#4a4b51,#3a3b40);border:1px solid #111;box-shadow:0 2px 0 #151517,inset 0 1px 0 rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#a2a2aa;transition:transform .08s,box-shadow .08s,color .15s}
+.H3 .seg span::before{content:"";position:absolute;top:-5px;left:50%;margin-left:-3px;width:6px;height:3px;border-radius:1px;background:#4a1608;transition:background .15s,box-shadow .15s}
+.H3 .seg span.on{transform:translateY(2px);box-shadow:0 0 0 #151517,inset 0 1px 3px rgba(0,0,0,.5);color:#fff}.H3 .seg span.on::before{background:#ff3b1f;box-shadow:0 0 6px #ff3b1f}
+.H3 .go{margin:14px 0 2px;height:36px;border-radius:4px;background:linear-gradient(#ff5a35,#e8401c);color:#fff;font-weight:700;letter-spacing:.35em;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid #6f1f0c;box-shadow:0 3px 0 #6f1f0c,0 6px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.3);transition:transform .08s,box-shadow .08s}
+.H3 .go:active{transform:translateY(3px);box-shadow:0 0 0 #6f1f0c,inset 0 1px 3px rgba(0,0,0,.4)}
+.H3 .r{display:flex;gap:9px;align-items:center;padding:3px 6px;margin:0 -6px;border-radius:2px;font-size:12px}
+.H3 .r::before{content:attr(data-n);flex:none;width:16px;height:16px;border-radius:2px;background:#3a2406;color:#ffb000;display:flex;align-items:center;justify-content:center;font-size:10px;text-shadow:none;transition:background .1s,box-shadow .1s}
+.H3 .r:hover,.H3 .r.h{background:rgba(255,176,0,.14)}.H3 .r:hover::before,.H3 .r.h::before{background:#ff3b1f;color:#fff;box-shadow:0 0 8px #ff3b1f}
+.H3 .ld{animation:pulse .7s ease-in-out infinite}
+</style></head><body>
+<h1>AI 怼 · 终端 / 报纸 / 硬件,各三版</h1>
+<div class="sub">全部可以点:点「生成」会重放 加载 → 出结果;点风格选项会切换;鼠标移上去是悬停态(第 2 条默认是悬停态,鼠标一进面板就消失)。</div>
+<div id="root"></div>
+
+<script>
+const R=["不唱不跳站C位就叫执着?那叫没节目硬凑人","官方请得起大牌却让他干站着,你管这叫重视?","每年都知道拦不住,那这不叫仪式叫例行整活"];
+const TOPIC="梦泪11周年被整蛊仪式,评论区讨论官方执意让梦泪站C位";
+const ST=["狠辣","阴阳","调侃","讲理"];
+const LD={T1:'<div class="ld"><span class="sp"></span> 读取整楼对话…</div>',T2:'<div class="ld">READING<span class="bar"></span></div>',T3:'<div class="ld dim"><span class="sp"></span> thinking</div>',N1:'<div class="ld">正在读整楼</div>',N2:'<div class="ld">正在读整楼</div>',N3:'<div class="ld">读取中</div>',H1:'<div class="lcd"><div class="ld">READING…</div></div>',H2:'<div class="lcd"><div class="ld">READING…</div></div>',H3:'<div class="lcd"><div class="ld">READING…</div></div>'};
+const tools='<span class="tools"><span>⚙</span><span>✕</span></span>';
+const segHTML=on=>ST.map((s,i)=>`<span class="${i==on?'on':''}">${s}</span>`).join("");
+const cyc='<span class="cycle" data-opts="狠辣|阴阳|调侃|讲理">讲理</span>';
+const T={
+T1:`<div class="hd"><b>AI 怼</b>${tools}</div><div class="inp"><i>❯</i><span>我想表达的意思(可选)</span><span class="caret"></span></div><div class="ctl"><div class="seg">${segHTML(3)}</div><div class="go">生成 ⏎</div></div><div class="topic">${TOPIC}</div><div class="out"></div>`,
+T2:`<div class="hd"><span>AI 怼</span>${tools}</div><div class="inp"><i>&gt;</i> 我想表达的意思<span class="caret"></span></div><div class="ctl"><span><span class="lab">STYLE </span>‹ <span class="cycle" data-opts="狠辣|阴阳|调侃|讲理">讲理</span> ›</span><span class="go">[ 生成 ]</span></div><div class="topic">${TOPIC}</div><div class="out"></div>`,
+T3:`${tools}<div class="ln"><i>$</i><span>dui <span class="dim">--style</span> ${cyc}</span></div><div class="ln"><i>$</i><span class="dim">--say "我想表达的意思"</span><span class="caret"></span></div><div class="go">↵ 生成</div><div class="topic">${TOPIC}</div><div class="out"></div>`,
+N1:`<div class="hd"><b>AI 怼</b>${tools}</div><div class="inp">我想表达的意思(可选)</div><div class="ctl"><span>风格 ${cyc}</span><span class="go">生成</span></div><div class="topic">${TOPIC}</div><div class="out"></div>`,
+N2:`<div class="hd"><span>AI 怼</span>${tools}</div><div class="inp">我想表达的意思(可选)</div><div class="ctl">${cyc}<span class="go">生成</span></div><div class="topic">${TOPIC}</div><div class="out"></div>`,
+N3:`<div class="hd"><b>AI 怼</b>${tools}</div><div class="inp">我想表达的意思(可选)</div><div class="ctl"><div class="seg">${segHTML(3)}</div><div class="go">生成</div></div><div class="topic">${TOPIC}</div><div class="out"></div>`,
+H1:`<div class="hd"><b><span class="led"></span>AI 怼</b>${tools}</div><div class="lab">Input</div><div class="lcd"><span class="ph">我想表达的意思(可选)</span><span class="caret"></span></div><div class="lab">Style</div><div class="seg">${segHTML(3)}</div><div class="go">生成</div><div class="lab">Output</div><div class="lcd out"></div>`,
+H2:`<div class="hd"><b><span class="led"></span>AI 怼</b>${tools}</div><div class="lab" style="margin-top:12px">输入</div><div class="lcd"><span class="ph">我想表达的意思(可选)</span><span class="caret"></span></div><div class="lab">风格</div><div class="seg">${segHTML(3)}</div><div class="go">生成</div><div class="out"></div>`,
+H3:`<div class="hd"><b><span class="led"></span>AI 怼</b>${tools}</div><div class="lab">INPUT</div><div class="lcd"><span class="ph">我想表达的意思(可选)</span><span class="caret"></span></div><div class="lab">STYLE</div><div class="seg">${segHTML(3)}</div><div class="go">生成</div><div class="lab">OUTPUT</div><div class="lcd out"></div>`
+};
+const META=[
+ ["终端风",[["T1","现代 TUI","近黑中性底 + 一个蓝色强调。提示符 ❯,选中项左侧竖条加 ›,正文不发光,最克制的一版。"],["T2","荧光 CRT","琥珀色三档亮度,扫描线、暗角,只有标题发光。悬停整行反色,加载是方块进度条。"],["T3","裸 shell 日志","没有边框和卡片,就是命令行回显。灰白加一抹绿,加载是盲文转圈。"]]],
+ ["报纸风",[["N1","大报版","只留一条报头细线,回复是纯衬线段落,靠留白分隔;悬停只出现一条红色细线并轻微缩进。"],["N2","杂志摘引","话题变成红色小标题,回复是大号摘引句配悬挂引号,悬停只有一道淡红荧光笔。"],["N3","瑞士网格","严格网格:粗黑顶线、大红数字、整行硬切换;悬停整行变红。无衬线为主。"]]],
+ ["硬件风",[["H1","TE 铝灰 + 黑屏橙字","浅灰铝机身,黑色 OLED 屏配橙色字。风格开关有弹簧滑块,按钮按下会真的下沉,生成时 LED 呼吸。"],["H2","Braun 暖米色圆键","暖米色机身、绿灰 LCD、四个圆形按键(选中会按下去)、一个橙色长键。最克制优雅。"],["H3","深色机器","炭黑机身,琥珀 LCD,风格键上方有红色小灯,回复前的方块键悬停时亮红灯。"]]]
+];
+const root=document.getElementById("root");
+META.forEach(([t,items])=>{
+ const row=document.createElement("div");row.className="row";
+ row.innerHTML=`<h2>${t}</h2><div class="grid">${items.map(([k,n,d])=>`<div><div class="cap"><b>${k} · ${n}</b><br>${d}</div><div class="stage"><div class="p demo ${k} ${k[0]=='H'?'H':''}" data-v="${k}" data-type="${k[0]=='N'?'fade':'type'}">${T[k]}</div></div></div>`).join("")}</div>`;
+ root.appendChild(row);
+});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+document.querySelectorAll(".demo").forEach(el=>{
+ const v=el.dataset.v,out=el.querySelector(".out"),go=el.querySelector(".go");let busy=false;
+ const lcd=out.classList.contains("lcd")||v[0]=="H"&&v!="H2"?out:out;
+ const build=()=>{out.innerHTML="";return R.map((t,i)=>{const d=document.createElement("div");d.className="r";d.dataset.n=i+1;const s=document.createElement("span");d.appendChild(s);out.appendChild(d);return [s,t,d]})};
+ const showStatic=()=>{build().forEach(([s,t])=>s.textContent=t);out.children[1].classList.add("h")};
+ showStatic();
+ el.addEventListener("mouseenter",()=>out.querySelectorAll(".h").forEach(n=>n.classList.remove("h")));
+ go.addEventListener("click",async()=>{
+  if(busy)return;busy=true;el.classList.add("loading");
+  out.innerHTML=LD[v];await sleep(1250);el.classList.remove("loading");
+  const rows=build();
+  if(el.dataset.type=="type"){for(const [s,t] of rows){for(let i=1;i<=t.length;i++){s.textContent=t.slice(0,i);await sleep(14)}await sleep(60)}}
+  else rows.forEach(([s,t,d],i)=>{s.textContent=t;d.classList.add("in");d.style.animationDelay=i*.09+"s"});
+  busy=false;
+ });
+ el.querySelectorAll(".cycle").forEach(c=>c.addEventListener("click",()=>{const o=c.dataset.opts.split("|");c.textContent=o[(o.indexOf(c.textContent)+1)%o.length]}));
+ el.querySelectorAll(".seg").forEach(sg=>{[...sg.children].forEach((s,i)=>s.addEventListener("click",()=>{[...sg.children].forEach(x=>x.classList.remove("on"));s.classList.add("on");sg.style.setProperty("--i",i)}))});
+});
+const B="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";let bi=0;setInterval(()=>{bi=(bi+1)%B.length;document.querySelectorAll(".sp").forEach(e=>e.textContent=B[bi])},80);
+</script></body></html>

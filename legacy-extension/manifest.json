@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "抖音评论 AI 怼",
+  "version": "0.1.0",
+  "description": "在抖音网页版每条评论旁加一个按钮,用 AI 生成几条回怼,你挑一条粘贴发送。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://api.anthropic.com/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://www.douyin.com/*"], "js": ["content.js"], "css": ["content.css"], "run_at": "document_idle" }
+  ],
+  "options_ui": { "page": "options.html", "open_in_tab": true }
+}

@@ -1,0 +1,17 @@
+
+      <div class="dyai-head">
+        <span class="dyai-title">AI 怼<span class="dyai-badge">不会自动发送</span></span>
+        <span class="dyai-tools"><button type="button" class="dyai-gear" title="设置" aria-label="设置">⚙</button><button type="button" class="dyai-x" title="关闭(Esc)" aria-label="关闭">✕</button></span>
+      </div>
+      <div class="dyai-set">
+        <div class="dyai-tip">首次使用:粘贴 API Key(DeepSeek),点保存。昵称可选,填了 AI 才认得出哪句是你说的。</div>
+        <input class="dyai-key" type="password" placeholder="API Key(sk-...)" autocomplete="off" spellcheck="false">
+        <input class="dyai-me" placeholder="我的抖音昵称(可选,和评论区显示的一致)" autocomplete="off" spellcheck="false">
+        <button type="button" class="dyai-go dyai-save">保存并生成</button>
+      </div>
+      <div class="dyai-row">
+        <input class="dyai-stance" placeholder="我想表达的意思(可选)" autocomplete="off">
+        <select class="dyai-style" title="回怼风格">${STYLES.map(s => `<option>${s}</option>`).join("")}</select>
+        <button type="button" class="dyai-go">生成</button>
+      </div>
+      <div class="dyai-out" aria-live="polite"></div>
